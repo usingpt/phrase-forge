@@ -94,28 +94,21 @@ export async function createApp(rootElement) {
               <span class="header-stat"><span class="header-stat-label">Stars 1-2</span><strong>${stats.confidence[1] + stats.confidence[2]}</strong></span>
             </div>
             <div class="header-actions">
-              ${languagePairs.length ? `
-                <label class="field pair-switcher compact-field">
-                  <select id="pair-switcher">
-                    ${languagePairs.map((pair) => `<option value="${pair.id}" ${pair.id === currentPair?.id ? "selected" : ""}>${esc(pairLabel(pair))}</option>`).join("")}
-                  </select>
-                </label>
-              ` : ""}
               <div class="auth-slot">
-                ${user ? authBadge(user) : cloud.enabled ? '<button type="button" class="button button-secondary auth-button" id="sign-in-button">Sign in with Google</button>' : '<span class="header-note">Local mode</span>'}
+                ${cloud.enabled
+                  ? user
+                    ? iconButton({ id: "sign-out-button", label: "Sign out", icon: "logout", className: "button button-secondary icon-button header-icon-button" })
+                    : iconButton({ id: "sign-in-button", label: "Sign in with Google", icon: "login", className: "button button-secondary icon-button header-icon-button auth-button" })
+                  : '<span class="header-note">Local mode</span>'}
               </div>
-              <button type="button" class="menu-button" id="menu-toggle" aria-expanded="false" aria-controls="header-menu">
-                <span></span><span></span><span></span>
-              </button>
             </div>
           </div>
-          <nav class="header-menu" id="header-menu" hidden>
-            ${nav("#/home", "Home", route.name === "home")}
-            ${nav("#/cards", "Cards", ["cards", "card-new", "card-detail", "card-edit"].includes(route.name))}
-            ${nav("#/study", "Study Mode", route.name === "study")}
-            ${nav("#/settings", "Settings", route.name === "settings")}
-            <a class="nav-link buttonlike" href="#/cards/new" data-route>Add Card</a>
-            ${user ? `<button type="button" class="nav-link nav-button" id="sign-out-button">Sign out</button>` : ""}
+          <nav class="header-shortcuts" aria-label="Primary">
+            ${iconLink({ href: "#/home", label: "Home", icon: "home", active: route.name === "home", className: "button button-secondary icon-button nav-icon-button" })}
+            ${iconLink({ href: "#/cards", label: "Cards", icon: "cards", active: ["cards", "card-new", "card-detail", "card-edit"].includes(route.name), className: "button button-secondary icon-button nav-icon-button" })}
+            ${iconLink({ href: "#/study", label: "Study Mode", icon: "study", active: route.name === "study", className: "button button-secondary icon-button nav-icon-button" })}
+            ${iconLink({ href: "#/settings", label: "Settings", icon: "settings", active: route.name === "settings", className: "button button-secondary icon-button nav-icon-button" })}
+            ${iconLink({ href: "#/cards/new", label: "Add Card", icon: "add", className: "button button-primary icon-button nav-icon-button" })}
           </nav>
         </header>
 
@@ -147,24 +140,6 @@ export async function createApp(rootElement) {
   }
 
   function bindGlobalUi() {
-    const menuButton = rootElement.querySelector("#menu-toggle");
-    const menu = rootElement.querySelector("#header-menu");
-    if (menuButton && menu) {
-      menuButton.addEventListener("click", () => {
-        const expanded = menuButton.getAttribute("aria-expanded") === "true";
-        menuButton.setAttribute("aria-expanded", String(!expanded));
-        menu.hidden = expanded;
-      });
-    }
-
-    const pairSwitcher = rootElement.querySelector("#pair-switcher");
-    if (pairSwitcher) {
-      pairSwitcher.addEventListener("change", async (event) => {
-        await store.updateActivePair(event.currentTarget.value);
-        render();
-      });
-    }
-
     const signInButton = rootElement.querySelector("#sign-in-button");
     if (signInButton) {
       signInButton.addEventListener("click", async () => {
@@ -248,9 +223,9 @@ export async function createApp(rootElement) {
       <section class="stack">
         <div class="hero-panel hero-gradient hero-actions-only">
           <div class="hero-actions">
-            <a class="button button-primary" href="#/cards/new" data-route>Add Card</a>
-            <a class="button button-secondary" href="#/cards" data-route>Cards</a>
-            <a class="button button-secondary" href="#/study" data-route>Study Mode</a>
+            ${iconLink({ href: "#/cards/new", label: "Add Card", icon: "add", className: "button button-primary icon-button" })}
+            ${iconLink({ href: "#/cards", label: "Cards", icon: "cards", className: "button button-secondary icon-button" })}
+            ${iconLink({ href: "#/study", label: "Study Mode", icon: "study", className: "button button-secondary icon-button" })}
           </div>
         </div>
 
@@ -291,8 +266,8 @@ export async function createApp(rootElement) {
         <div class="section-head">
           <div></div>
           <div class="card-actions">
-            <a class="button button-primary" href="#/cards/new" data-route>Add Card</a>
-            <button type="button" class="button button-secondary" id="toggle-filters">${filtersCollapsed ? "Show Filters" : "Hide Filters"}</button>
+            ${iconLink({ href: "#/cards/new", label: "Add Card", icon: "add", className: "button button-primary icon-button" })}
+            ${iconButton({ id: "toggle-filters", label: filtersCollapsed ? "Show filters" : "Hide filters", icon: "filter", className: `button button-secondary icon-button ${filtersCollapsed ? "" : "is-active"}` })}
           </div>
         </div>
         <div class="toolbar toolbar-4 ${filtersCollapsed ? "is-collapsed" : ""}" id="cards-toolbar">
@@ -320,7 +295,9 @@ export async function createApp(rootElement) {
     toggleFilters.addEventListener("click", () => {
       const collapsed = toolbar.classList.toggle("is-collapsed");
       writeCardsFilterCollapsed(collapsed);
-      toggleFilters.textContent = collapsed ? "Show Filters" : "Hide Filters";
+      toggleFilters.classList.toggle("is-active", !collapsed);
+      toggleFilters.setAttribute("aria-label", collapsed ? "Show filters" : "Hide filters");
+      toggleFilters.setAttribute("title", collapsed ? "Show filters" : "Hide filters");
     });
 
     const update = () => {
@@ -367,8 +344,8 @@ export async function createApp(rootElement) {
         <div class="section-head">
           <div></div>
           <div class="card-actions">
-            <button type="button" id="generate-button-top" class="button button-secondary">Generate</button>
-            <button type="submit" form="card-form" class="button button-primary">Save</button>
+            ${iconButton({ id: "generate-button-top", label: "Generate draft", icon: "sparkles", className: "button button-secondary icon-button" })}
+            ${iconButton({ type: "submit", form: "card-form", label: "Save card", icon: "save", className: "button button-primary icon-button" })}
           </div>
         </div>
         <form id="card-form" class="form-grid">
@@ -450,7 +427,9 @@ export async function createApp(rootElement) {
       }
 
       button.disabled = true;
-      button.textContent = "Generating...";
+      button.innerHTML = iconMarkup("spinner");
+      button.setAttribute("aria-label", "Generating draft");
+      button.setAttribute("title", "Generating draft");
 
       try {
         const pair = getPairById(context.languagePairs, partial.pairId) || context.currentPair;
@@ -473,7 +452,9 @@ export async function createApp(rootElement) {
         alert(formatApiError(error));
       } finally {
         button.disabled = false;
-        button.textContent = "Generate";
+        button.innerHTML = iconMarkup("sparkles");
+        button.setAttribute("aria-label", "Generate draft");
+        button.setAttribute("title", "Generate draft");
       }
     });
   }
@@ -499,9 +480,9 @@ export async function createApp(rootElement) {
             </div>
           </div>
           <div class="hero-actions">
-            <a class="button button-secondary" href="#/cards" data-route>Back to List</a>
-            <a class="button button-primary" href="#/cards/${card.id}/edit" data-route>Edit</a>
-            <button id="delete-card-button" type="button" class="button button-secondary">Delete</button>
+            ${iconLink({ href: "#/cards", label: "Back to list", icon: "back", className: "button button-secondary icon-button" })}
+            ${iconLink({ href: `#/cards/${card.id}/edit`, label: "Edit card", icon: "edit", className: "button button-primary icon-button" })}
+            ${iconButton({ id: "delete-card-button", label: "Delete card", icon: "trash", className: "button button-secondary icon-button" })}
           </div>
         </div>
 
@@ -556,7 +537,7 @@ export async function createApp(rootElement) {
                 ${allTags.map((tag) => `<option value="${esc(tag)}" ${tag === selectedTag ? "selected" : ""}>${esc(tag)}</option>`).join("")}
               </select>
             </label>
-            <button type="submit" class="button button-secondary">Update Filters</button>
+            ${iconButton({ type: "submit", label: "Update filters", icon: "filter", className: "button button-secondary icon-button" })}
           </form>
         </section>
         <div id="study-region"></div>
@@ -595,11 +576,11 @@ export async function createApp(rootElement) {
             </dl>
           </div>
           <div class="study-actions">
-            <button type="button" class="button button-secondary" id="prev-card">Prev</button>
+            ${iconButton({ id: "prev-card", label: "Previous card", icon: "prev", className: "button button-secondary icon-button" })}
             <div class="confidence-row">
               <div class="star-group">${renderStarButtons(card.id, card.confidence, true)}</div>
             </div>
-            <button type="button" class="button button-primary" id="next-card">Next</button>
+            ${iconButton({ id: "next-card", label: "Next card", icon: "next", className: "button button-primary icon-button" })}
           </div>
         </section>
       `;
@@ -665,7 +646,7 @@ export async function createApp(rootElement) {
               <div class="settings-note">${appConfig.features.sharedGeneration ? "OpenAI generation is managed server-side through Vercel environment variables." : "Shared OpenAI generation is not configured yet. Add OPENAI_API_KEY in Vercel to enable it."}</div>
             </div>
             <div class="form-actions">
-              <button type="submit" class="button button-primary">Save Settings</button>
+              ${iconButton({ type: "submit", label: "Save settings", icon: "save", className: "button button-primary icon-button" })}
             </div>
           </form>
         </section>
@@ -682,9 +663,9 @@ export async function createApp(rootElement) {
                   <p>${pair.id === context.currentPair?.id ? "Currently selected." : "Available to switch."}</p>
                 </div>
                 <div class="row-actions">
-                  <button type="button" class="button button-secondary" data-activate-pair="${pair.id}">Switch</button>
-                  <button type="button" class="button button-secondary" data-edit-pair="${pair.id}">Edit</button>
-                  <button type="button" class="button button-secondary" data-delete-pair="${pair.id}">Delete</button>
+                  ${iconButton({ label: "Switch language pair", icon: "switch", className: "button button-secondary icon-button", attributes: `data-activate-pair="${pair.id}"` })}
+                  ${iconButton({ label: "Edit language pair", icon: "edit", className: "button button-secondary icon-button", attributes: `data-edit-pair="${pair.id}"` })}
+                  ${iconButton({ label: "Delete language pair", icon: "trash", className: "button button-secondary icon-button", attributes: `data-delete-pair="${pair.id}"` })}
                 </div>
               </article>
             `).join("")}
@@ -695,8 +676,8 @@ export async function createApp(rootElement) {
             ${input("nativeLanguage", "Native Language", true, "e.g. Japanese")}
             ${input("targetLanguage", "Target Language", true, "e.g. English")}
             <div class="form-actions">
-              <button type="submit" class="button button-secondary">${editingPair ? "Update Language Pair" : "Add Language Pair"}</button>
-              ${editingPair ? '<button type="button" class="button button-secondary" id="cancel-pair-edit">Cancel Edit</button>' : ""}
+              ${iconButton({ type: "submit", label: editingPair ? "Update language pair" : "Add language pair", icon: editingPair ? "save" : "add", className: "button button-secondary icon-button" })}
+              ${editingPair ? iconButton({ id: "cancel-pair-edit", label: "Cancel edit", icon: "close", className: "button button-secondary icon-button" }) : ""}
             </div>
           </form>
         </section>
@@ -849,17 +830,6 @@ function getCurrentPair(languagePairs, activePairId) {
   return languagePairs.find((pair) => pair.id === activePairId) || languagePairs[0] || null;
 }
 
-function authBadge(user) {
-  return `
-    <div class="auth-badge">
-      ${user.picture ? `<img src="${esc(user.picture)}" alt="${esc(user.name)}" />` : ""}
-      <div>
-        <strong>${esc(user.name || "Google User")}</strong>
-      </div>
-    </div>
-  `;
-}
-
 function pageTitle(route) {
   return {
     home: "Home",
@@ -892,7 +862,7 @@ function homeCardRow(card) {
         <strong>${esc(card.expression)}</strong>
         <p>${esc(card.translation || card.meaning || "No translation")}</p>
       </div>
-      <a class="button button-secondary" href="#/cards/${card.id}" data-route>Details</a>
+      ${iconLink({ href: `#/cards/${card.id}`, label: "View card details", icon: "open", className: "button button-secondary icon-button" })}
     </article>
   `;
 }
@@ -922,12 +892,53 @@ function cardPreview(card) {
         <p class="card-note">${esc(card.nuance || card.notes || "Not entered")}</p>
       </div>
       <div class="card-actions">
-        <a class="button button-primary" href="#/cards/${card.id}" data-route>Details</a>
-        <a class="button button-secondary" href="#/cards/${card.id}/edit" data-route>Edit</a>
-        <button type="button" class="button button-secondary" data-delete-card="${card.id}">Delete</button>
+        ${iconLink({ href: `#/cards/${card.id}`, label: "View card details", icon: "open", className: "button button-primary icon-button" })}
+        ${iconLink({ href: `#/cards/${card.id}/edit`, label: "Edit card", icon: "edit", className: "button button-secondary icon-button" })}
+        ${iconButton({ label: "Delete card", icon: "trash", className: "button button-secondary icon-button", attributes: `data-delete-card="${card.id}"` })}
       </div>
     </article>
   `;
+}
+
+function iconLink({ href, label, icon, className = "", active = false }) {
+  const classes = [className, active ? "is-active" : ""].filter(Boolean).join(" ");
+  return `<a class="${classes}" href="${href}" data-route aria-label="${esc(label)}" title="${esc(label)}">${iconMarkup(icon)}</a>`;
+}
+
+function iconButton({ id = "", type = "button", form = "", label, icon, className = "", attributes = "" }) {
+  const idAttribute = id ? ` id="${id}"` : "";
+  const formAttribute = form ? ` form="${form}"` : "";
+  const extraAttributes = attributes ? ` ${attributes}` : "";
+  return `<button${idAttribute} type="${type}" class="${className}" aria-label="${esc(label)}" title="${esc(label)}"${formAttribute}${extraAttributes}>${iconMarkup(icon)}</button>`;
+}
+
+function iconMarkup(icon) {
+  return `<span class="button-icon" aria-hidden="true">${iconSvg(icon)}</span>`;
+}
+
+function iconSvg(icon) {
+  const icons = {
+    add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    cards: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="13" height="10" rx="2"/><path d="M8 4h10a2 2 0 0 1 2 2v10"/><path d="M7 10h7"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20z"/><path d="M13.5 6.5l3 3"/></svg>',
+    filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16"/><path d="M7 12h10"/><path d="M10 17h4"/></svg>',
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5L12 5l8 6.5"/><path d="M7 10.5V19h10v-8.5"/></svg>',
+    login: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16l4-4-4-4"/><path d="M8 12h10"/><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg>',
+    logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/><path d="M14 8l4 4-4 4"/><path d="M8 12h10"/></svg>',
+    next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+    open: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 7H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-3"/><path d="M13 5h6v6"/><path d="M19 5l-9 9"/></svg>',
+    prev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.5A1.5 1.5 0 0 1 6.5 5h9.9L19 7.6V18a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 18z"/><path d="M8 5v5h8V7"/><path d="M9 19v-5h6v5"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 0 0 0-7z"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1 1 0 0 1 0 1.4l-1.2 1.2a1 1 0 0 1-1.4 0l-.1-.1a1 1 0 0 0-1.1-.2a1 1 0 0 0-.6.9V20a1 1 0 0 1-1 1h-1.8a1 1 0 0 1-1-1v-.2a1 1 0 0 0-.6-.9a1 1 0 0 0-1.1.2l-.1.1a1 1 0 0 1-1.4 0L4.3 17.9a1 1 0 0 1 0-1.4l.1-.1a1 1 0 0 0 .2-1.1a1 1 0 0 0-.9-.6H3.5a1 1 0 0 1-1-1v-1.8a1 1 0 0 1 1-1h.2a1 1 0 0 0 .9-.6a1 1 0 0 0-.2-1.1l-.1-.1a1 1 0 0 1 0-1.4l1.2-1.2a1 1 0 0 1 1.4 0l.1.1a1 1 0 0 0 1.1.2a1 1 0 0 0 .6-.9V4a1 1 0 0 1 1-1h1.8a1 1 0 0 1 1 1v.2a1 1 0 0 0 .6.9a1 1 0 0 0 1.1-.2l.1-.1a1 1 0 0 1 1.4 0l1.2 1.2a1 1 0 0 1 0 1.4l-.1.1a1 1 0 0 0-.2 1.1a1 1 0 0 0 .9.6h.2a1 1 0 0 1 1 1v1.8a1 1 0 0 1-1 1h-.2a1 1 0 0 0-.9.6z"/></svg>',
+    sparkles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M19 4v3"/><path d="M20.5 5.5h-3"/><path d="M5 16v5"/><path d="M7.5 18.5h-5"/></svg>',
+    spinner: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 4a8 8 0 1 1-8 8"/></svg>',
+    study: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v16H7.5A2.5 2.5 0 0 0 5 21z"/><path d="M5 5.5V21"/><path d="M9 7h6"/><path d="M9 11h6"/></svg>',
+    switch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11"/><path d="M15 4l3 3-3 3"/><path d="M17 17H6"/><path d="M9 20l-3-3 3-3"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M7 7l1 12h8l1-12"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>',
+  };
+  return icons[icon] || icons.settings;
 }
 
 function definition(label, value) {
