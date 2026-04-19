@@ -1320,7 +1320,7 @@ function buildFlexibleIdiomPattern(words) {
       if (index === 0) {
         return buildVerbFamilyPattern(word);
       }
-      return escapeRegExp(word);
+      return buildIdiomWordPattern(word);
     })
     .join("\\s+");
 }
@@ -1336,8 +1336,25 @@ function buildVerbFamilyPattern(word) {
   return escapeRegExp(word);
 }
 
+function buildIdiomWordPattern(word) {
+  const lowered = word.toLowerCase();
+  if (lowered === "sb" || lowered === "somebody" || lowered === "someone") {
+    return "(?:someone|somebody|anyone|anybody|me|you|him|her|us|them|\\w+)";
+  }
+  if (lowered === "sth" || lowered === "something") {
+    return "(?:something|anything|it|this|that|\\w+)";
+  }
+  if (lowered === "one's") {
+    return "(?:my|your|his|her|our|their|one['’]s)";
+  }
+  if (lowered === "oneself") {
+    return "(?:myself|yourself|himself|herself|ourselves|themselves|oneself)";
+  }
+  return escapeRegExp(word);
+}
+
 function isPronounLike(word) {
-  return /^(someone|somebody|something|anyone|anybody|me|you|him|her|us|them)$/i.test(word);
+  return /^(someone|somebody|something|anyone|anybody|me|you|him|her|us|them|sb|sth|one's|oneself)$/i.test(word);
 }
 
 function mergeRanges(ranges) {
