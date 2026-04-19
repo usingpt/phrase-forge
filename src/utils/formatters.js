@@ -1,6 +1,6 @@
 export function formatDateTime(value) {
   if (!value) {
-    return "未設定";
+    return "Not set";
   }
 
   const date = new Date(value);
@@ -8,7 +8,7 @@ export function formatDateTime(value) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("ja-JP", {
+  return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -19,7 +19,7 @@ export function formatDateTime(value) {
 
 export function formatDate(value) {
   if (!value) {
-    return "未設定";
+    return "Not set";
   }
 
   const date = new Date(value);
@@ -27,7 +27,7 @@ export function formatDate(value) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("ja-JP", {
+  return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -36,7 +36,7 @@ export function formatDate(value) {
 
 export function formatRelativeDate(value) {
   if (!value) {
-    return "未記録";
+    return "No record";
   }
 
   const date = new Date(value);
@@ -51,13 +51,13 @@ export function formatRelativeDate(value) {
   const diffDays = Math.round((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) {
-    return "今日";
+    return "Today";
   }
   if (diffDays === 1) {
-    return "昨日";
+    return "Yesterday";
   }
   if (diffDays > 1 && diffDays < 7) {
-    return `${diffDays}日前`;
+    return `${diffDays} days ago`;
   }
 
   return formatDate(value);

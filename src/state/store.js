@@ -235,9 +235,9 @@ function normalizeState(input) {
     : [
         normalizeLanguagePair({
           id: "pair-default",
-          name: "日本語 → 英語",
-          nativeLanguage: "日本語",
-          targetLanguage: "英語",
+          name: "Japanese -> English",
+          nativeLanguage: "Japanese",
+          targetLanguage: "English",
           ownerId: GUEST_OWNER_ID,
         }),
       ];
@@ -276,8 +276,8 @@ function normalizeLanguagePair(pair) {
     id: pair.id || crypto.randomUUID(),
     ownerId: pair.ownerId || GUEST_OWNER_ID,
     name: pair.name?.toString().trim() || "",
-    nativeLanguage: pair.nativeLanguage?.toString().trim() || "日本語",
-    targetLanguage: pair.targetLanguage?.toString().trim() || "英語",
+    nativeLanguage: pair.nativeLanguage?.toString().trim() || "Japanese",
+    targetLanguage: pair.targetLanguage?.toString().trim() || "English",
   };
 }
 
@@ -325,9 +325,9 @@ function ensureWorkspaceForOwner(state, ownerId) {
     const pair = normalizeLanguagePair({
       id: crypto.randomUUID(),
       ownerId,
-      name: "日本語 → 英語",
-      nativeLanguage: "日本語",
-      targetLanguage: "英語",
+      name: "Japanese -> English",
+      nativeLanguage: "Japanese",
+      targetLanguage: "English",
     });
     return {
       ...state,

@@ -1,7 +1,7 @@
 export function createFlashcardGenerationService() {
   async function generateDraft({ apiKey, model, nativeLanguage, targetLanguage, type, expression }) {
     if (!apiKey) {
-      throw new Error("OpenAI APIキーが設定されていません。");
+      throw new Error("OpenAI API key is not configured.");
     }
 
     const schema = {
@@ -85,13 +85,13 @@ export function createFlashcardGenerationService() {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenAI API エラー: ${response.status} ${errorText}`);
+      throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
     }
 
     const payload = await response.json();
     const content = extractStructuredText(payload);
     if (!content) {
-      throw new Error("OpenAIから生成結果を読み取れませんでした。");
+      throw new Error("Could not read the generated result from OpenAI.");
     }
 
     try {
@@ -109,7 +109,7 @@ export function createFlashcardGenerationService() {
       };
     } catch (error) {
       console.error("Failed to parse OpenAI response.", error);
-      throw new Error("生成結果の解析に失敗しました。");
+      throw new Error("Failed to parse the generated result.");
     }
   }
 

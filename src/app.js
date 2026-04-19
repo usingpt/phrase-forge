@@ -4,16 +4,16 @@ import { createFlashcardGenerationService } from "./services/flashcardGeneration
 import { formatDateTime } from "./utils/formatters.js";
 
 const CARD_TYPES = [
-  { value: "idiom", label: "イディオム" },
-  { value: "phrase", label: "フレーズ" },
+  { value: "idiom", label: "Idiom" },
+  { value: "phrase", label: "Phrase" },
 ];
 
 const CONFIDENCE_LEVELS = [
-  { value: "", label: "すべて" },
-  { value: "0", label: "未設定" },
-  { value: "1", label: "星1" },
-  { value: "2", label: "星2" },
-  { value: "3", label: "星3" },
+  { value: "", label: "All" },
+  { value: "0", label: "Unrated" },
+  { value: "1", label: "Star 1" },
+  { value: "2", label: "Star 2" },
+  { value: "3", label: "Star 3" },
 ];
 
 const GUEST_OWNER_ID = "guest-local";
@@ -53,9 +53,9 @@ export function createApp(rootElement) {
               <a class="brand brand-link" href="#/home" data-route>Phrase Forge</a>
             </div>
             <div class="header-stats">
-              <span class="header-stat"><span class="header-stat-label">ユーザー</span><strong>${esc(user?.name || "ゲスト")}</strong></span>
-              <span class="header-stat"><span class="header-stat-label">カード</span><strong>${stats.total}</strong></span>
-              <span class="header-stat"><span class="header-stat-label">星1-2</span><strong>${stats.confidence[1] + stats.confidence[2]}</strong></span>
+              <span class="header-stat"><span class="header-stat-label">User</span><strong>${esc(user?.name || "Guest")}</strong></span>
+              <span class="header-stat"><span class="header-stat-label">Cards</span><strong>${stats.total}</strong></span>
+              <span class="header-stat"><span class="header-stat-label">Stars 1-2</span><strong>${stats.confidence[1] + stats.confidence[2]}</strong></span>
             </div>
             <div class="header-actions">
               ${languagePairs.length ? `
@@ -74,12 +74,12 @@ export function createApp(rootElement) {
             </div>
           </div>
           <nav class="header-menu" id="header-menu" hidden>
-            ${nav("#/home", "ホーム", route.name === "home")}
-            ${nav("#/cards", "カード一覧", ["cards", "card-new", "card-detail", "card-edit"].includes(route.name))}
-            ${nav("#/study", "学習モード", route.name === "study")}
-            ${nav("#/settings", "設定", route.name === "settings")}
-            <a class="nav-link buttonlike" href="#/cards/new" data-route>カードを追加</a>
-            ${user ? `<button type="button" class="nav-link nav-button" id="sign-out-button">Googleからログアウト</button>` : ""}
+            ${nav("#/home", "Home", route.name === "home")}
+            ${nav("#/cards", "Cards", ["cards", "card-new", "card-detail", "card-edit"].includes(route.name))}
+            ${nav("#/study", "Study Mode", route.name === "study")}
+            ${nav("#/settings", "Settings", route.name === "settings")}
+            <a class="nav-link buttonlike" href="#/cards/new" data-route>Add Card</a>
+            ${user ? `<button type="button" class="nav-link nav-button" id="sign-out-button">Sign out from Google</button>` : ""}
           </nav>
         </header>
 
@@ -136,7 +136,7 @@ export function createApp(rootElement) {
           window.google.accounts.id.disableAutoSelect();
         }
         store.updateCurrentUser(null);
-        showFlash("ゲストモードに切り替えました。");
+        showFlash("Switched to guest mode.");
       });
     }
   }
@@ -191,7 +191,7 @@ export function createApp(rootElement) {
       callback: (response) => {
         const profile = decodeGoogleCredential(response.credential);
         if (!profile?.sub) {
-          alert("Google認証の結果を読み取れませんでした。");
+          alert("Could not read the Google sign-in result.");
           return;
         }
         store.updateCurrentUser({
@@ -200,7 +200,7 @@ export function createApp(rootElement) {
           email: profile.email,
           picture: profile.picture,
         });
-        showFlash("Googleアカウントでログインしました。");
+        showFlash("Signed in with your Google account.");
       },
     });
     window.google.accounts.id.renderButton(buttonHost, {
@@ -232,9 +232,9 @@ export function createApp(rootElement) {
       <section class="stack">
         <div class="hero-panel hero-gradient hero-actions-only">
           <div class="hero-actions">
-            <a class="button button-primary" href="#/cards/new" data-route>カード追加</a>
-            <a class="button button-secondary" href="#/cards" data-route>カード一覧</a>
-            <a class="button button-secondary" href="#/study" data-route>学習モード</a>
+            <a class="button button-primary" href="#/cards/new" data-route>Add Card</a>
+            <a class="button button-secondary" href="#/cards" data-route>Cards</a>
+            <a class="button button-secondary" href="#/study" data-route>Study Mode</a>
           </div>
         </div>
 
@@ -248,7 +248,7 @@ export function createApp(rootElement) {
 
         <section class="panel">
           <div class="list-stack">
-            ${latestCards.length ? latestCards.map(homeCardRow).join("") : `<div class="empty-state">まだカードがありません。メニューからカードを追加してください。</div>`}
+            ${latestCards.length ? latestCards.map(homeCardRow).join("") : `<div class="empty-state">No cards yet. Add a card from the menu to get started.</div>`}
           </div>
         </section>
       </section>
@@ -275,14 +275,14 @@ export function createApp(rootElement) {
         <div class="section-head">
           <div></div>
           <div class="card-actions">
-            <a class="button button-primary" href="#/cards/new" data-route>カード追加</a>
-            <button type="button" class="button button-secondary" id="toggle-filters">${filtersCollapsed ? "検索条件を表示" : "検索条件を隠す"}</button>
+            <a class="button button-primary" href="#/cards/new" data-route>Add Card</a>
+            <button type="button" class="button button-secondary" id="toggle-filters">${filtersCollapsed ? "Show Filters" : "Hide Filters"}</button>
           </div>
         </div>
         <div class="toolbar toolbar-4 ${filtersCollapsed ? "is-collapsed" : ""}" id="cards-toolbar">
-          <label class="field"><span>検索</span><input id="search" type="search" placeholder="表現、例文、訳、ニュアンスで検索" /></label>
-          <label class="field"><span>種別</span><select id="type-filter"><option value="">すべて</option>${CARD_TYPES.map((type) => `<option value="${type.value}">${type.label}</option>`).join("")}</select></label>
-          <label class="field"><span>タグ</span><select id="tag-filter"><option value="">すべて</option>${uniqueTags(context.cardsForCurrentPair).map((tag) => `<option value="${esc(tag)}">${esc(tag)}</option>`).join("")}</select></label>
+          <label class="field"><span>Search</span><input id="search" type="search" placeholder="Search expressions, examples, translations, or nuance" /></label>
+          <label class="field"><span>Type</span><select id="type-filter"><option value="">All</option>${CARD_TYPES.map((type) => `<option value="${type.value}">${type.label}</option>`).join("")}</select></label>
+          <label class="field"><span>Tags</span><select id="tag-filter"><option value="">All</option>${uniqueTags(context.cardsForCurrentPair).map((tag) => `<option value="${esc(tag)}">${esc(tag)}</option>`).join("")}</select></label>
           <label class="field"><span>Confidence</span><select id="confidence-filter">${CONFIDENCE_LEVELS.map((level) => `<option value="${level.value}">${level.label}</option>`).join("")}</select></label>
         </div>
         <div id="card-list" class="card-grid"></div>
@@ -304,7 +304,7 @@ export function createApp(rootElement) {
     toggleFilters.addEventListener("click", () => {
       const collapsed = toolbar.classList.toggle("is-collapsed");
       writeCardsFilterCollapsed(collapsed);
-      toggleFilters.textContent = collapsed ? "検索条件を表示" : "検索条件を隠す";
+      toggleFilters.textContent = collapsed ? "Show Filters" : "Hide Filters";
     });
 
     const update = () => {
@@ -323,7 +323,7 @@ export function createApp(rootElement) {
       });
       view.querySelector("#card-list").innerHTML = items.length
         ? items.map(cardPreview).join("")
-        : `<div class="empty-state">条件に合うカードが見つかりません。検索条件を少し広げると見つかりやすいです。</div>`;
+        : `<div class="empty-state">No cards match the current filters. Try broadening your search.</div>`;
       bindRoutes();
       bindConfidenceButtons(view);
       bindCardDeleteButtons(view);
@@ -339,7 +339,7 @@ export function createApp(rootElement) {
   function renderCardForm(view, state, context, cardId = null) {
     const editingCard = cardId ? getCardById(context.cards, cardId) : null;
     if (cardId && !editingCard) {
-      navigateWithFlash("#/cards", "カードが見つからなかったため一覧へ戻しました。");
+      navigateWithFlash("#/cards", "Card not found, so you were returned to the list.");
       return;
     }
 
@@ -351,38 +351,38 @@ export function createApp(rootElement) {
         <div class="section-head">
           <div></div>
           <div class="card-actions">
-            <button type="button" id="generate-button-top" class="button button-secondary">生成</button>
-            <button type="submit" form="card-form" class="button button-primary">保存</button>
+            <button type="button" id="generate-button-top" class="button button-secondary">Generate</button>
+            <button type="submit" form="card-form" class="button button-primary">Save</button>
           </div>
         </div>
         <form id="card-form" class="form-grid">
           <label class="field">
-            <span>言語ペア *</span>
+            <span>Language Pair *</span>
             <select name="pairId" required>
               ${context.languagePairs.map((pair) => `<option value="${pair.id}" ${pair.id === (editingCard?.pairId || draft?.pairId || context.currentPair?.id) ? "selected" : ""}>${esc(pairLabel(pair))}</option>`).join("")}
             </select>
           </label>
           <label class="field">
-            <span>カード種別 *</span>
+            <span>Card Type *</span>
             <select name="type" required>
               ${CARD_TYPES.map((type) => `<option value="${type.value}" ${type.value === initialType ? "selected" : ""}>${type.label}</option>`).join("")}
             </select>
           </label>
-          ${input("expression", "表現", true, "例: be in luck")}
-          ${input("translation", "訳", false, "フレーズ向け")}
-          ${input("tags", "タグ", false, "例: 日常会話, 旅行, 映画")}
-          ${textarea("meaning", "意味", "イディオム向け")}
-          ${textarea("example", "例文", "イディオム向け")}
-          ${textarea("exampleTranslation", "例文訳", "イディオム向け")}
-          ${textarea("nuance", "ニュアンス", "イディオム向け / フレーズでも補足可")}
-          ${textarea("notes", "備考 / 由来メモ", "フレーズ向け")}
+          ${input("expression", "Expression", true, "e.g. be in luck")}
+          ${input("translation", "Translation", false, "For phrases")}
+          ${input("tags", "Tags", false, "e.g. daily conversation, travel, movies")}
+          ${textarea("meaning", "Meaning", "For idioms")}
+          ${textarea("example", "Example", "For idioms")}
+          ${textarea("exampleTranslation", "Example Translation", "For idioms")}
+          ${textarea("nuance", "Nuance", "For idioms / optional note for phrases")}
+          ${textarea("notes", "Notes / Origin", "For phrases")}
           <label class="field">
             <span>Confidence</span>
             <select name="confidence">
-              <option value="0">未設定</option>
-              <option value="1">星1</option>
-              <option value="2">星2</option>
-              <option value="3">星3</option>
+              <option value="0">Unrated</option>
+              <option value="1">Star 1</option>
+              <option value="2">Star 2</option>
+              <option value="3">Star 3</option>
             </select>
           </label>
         </form>
@@ -406,18 +406,18 @@ export function createApp(rootElement) {
       event.preventDefault();
       const card = collectCardForm(event.currentTarget);
       if (!card.expression) {
-        alert("表現は必須です。");
+        alert("Expression is required.");
         return;
       }
       if (editingCard) {
         store.updateCard(editingCard.id, card);
         sessionStorage.removeItem("phrase-forge:draft");
-        navigateWithFlash(`#/cards/${editingCard.id}`, "カードを更新しました。");
+        navigateWithFlash(`#/cards/${editingCard.id}`, "Card updated.");
         return;
       }
       const created = store.addCard(card);
       sessionStorage.removeItem("phrase-forge:draft");
-      navigateWithFlash(`#/cards/${created.id}`, "カードを保存しました。");
+      navigateWithFlash(`#/cards/${created.id}`, "Card saved.");
     });
 
     view.querySelector("#generate-button-top").addEventListener("click", async (event) => {
@@ -425,24 +425,24 @@ export function createApp(rootElement) {
       const form = view.querySelector("#card-form");
       const partial = collectCardForm(form);
       if (!partial.expression) {
-        alert("先に表現を入力してください。");
+        alert("Enter an expression first.");
         return;
       }
       if (!state.settings.openAiApiKey) {
-        alert("先に設定画面で OpenAI API キーを入力してください。");
+        alert("Enter your OpenAI API key in Settings first.");
         return;
       }
 
       button.disabled = true;
-      button.textContent = "生成中...";
+      button.textContent = "Generating...";
 
       try {
         const pair = getPairById(context.languagePairs, partial.pairId) || context.currentPair;
         const generated = await generator.generateDraft({
           apiKey: state.settings.openAiApiKey,
           model: state.settings.openAiModel,
-          nativeLanguage: pair?.nativeLanguage || "日本語",
-          targetLanguage: pair?.targetLanguage || "英語",
+          nativeLanguage: pair?.nativeLanguage || "Japanese",
+          targetLanguage: pair?.targetLanguage || "English",
           type: partial.type,
           expression: partial.expression,
         });
@@ -453,12 +453,12 @@ export function createApp(rootElement) {
           tags: mergeTags(partial.tags, generated.tags || []),
         });
         syncTypeHints(form);
-        showInlineFlash("AIで下書きを生成しました。必要に応じて調整してから保存してください。");
+        showInlineFlash("A draft was generated. Adjust it if needed, then save.");
       } catch (error) {
         alert(formatApiError(error));
       } finally {
         button.disabled = false;
-        button.textContent = "生成";
+        button.textContent = "Generate";
       }
     });
   }
@@ -466,7 +466,7 @@ export function createApp(rootElement) {
   function renderCardDetail(view, state, context, cardId) {
     const card = getCardById(context.cards, cardId);
     if (!card) {
-      navigateWithFlash("#/cards", "カードが見つからなかったため一覧へ戻しました。");
+      navigateWithFlash("#/cards", "Card not found, so you were returned to the list.");
       return;
     }
 
@@ -484,37 +484,37 @@ export function createApp(rootElement) {
             </div>
           </div>
           <div class="hero-actions">
-            <a class="button button-secondary" href="#/cards" data-route>一覧へ戻る</a>
-            <a class="button button-primary" href="#/cards/${card.id}/edit" data-route>編集</a>
-            <button id="delete-card-button" type="button" class="button button-secondary">削除</button>
+            <a class="button button-secondary" href="#/cards" data-route>Back to List</a>
+            <a class="button button-primary" href="#/cards/${card.id}/edit" data-route>Edit</a>
+            <button id="delete-card-button" type="button" class="button button-secondary">Delete</button>
           </div>
         </div>
 
         <div class="grid-2">
           <section class="panel">
-            <h3>意味と補足</h3>
-            ${definition("訳", card.translation)}
-            ${definition("意味", card.meaning)}
-            ${definition("ニュアンス", card.nuance)}
-            ${definition("備考 / 由来メモ", card.notes)}
+            <h3>Meaning and Notes</h3>
+            ${definition("Translation", card.translation)}
+            ${definition("Meaning", card.meaning)}
+            ${definition("Nuance", card.nuance)}
+            ${definition("Notes / Origin", card.notes)}
           </section>
           <section class="panel">
-            <h3>例文</h3>
-            ${richDefinition("例文", highlightExpression(card.example, card.expression, card.type))}
-            ${definition("例文訳", card.exampleTranslation)}
-            ${definition("タグ", card.tags.join(", "))}
-            ${definition("更新日時", formatDateTime(card.updatedAt))}
+            <h3>Example</h3>
+            ${richDefinition("Example", highlightExpression(card.example, card.expression, card.type))}
+            ${definition("Example Translation", card.exampleTranslation)}
+            ${definition("Tags", card.tags.join(", "))}
+            ${definition("Updated", formatDateTime(card.updatedAt))}
           </section>
         </div>
       </section>
     `;
 
     view.querySelector("#delete-card-button").addEventListener("click", () => {
-      if (!confirm(`「${card.expression}」を削除します。`)) {
+      if (!confirm(`Delete "${card.expression}"?`)) {
         return;
       }
       store.deleteCard(card.id);
-      navigateWithFlash("#/cards", "カードを削除しました。");
+      navigateWithFlash("#/cards", "Card deleted.");
     });
 
     bindConfidenceButtons(view);
@@ -535,13 +535,13 @@ export function createApp(rootElement) {
           </div>
           <form id="study-filter-form" class="inline-form study-filter-form">
             <label class="field">
-              <span>学習タグ</span>
+              <span>Study Tag</span>
               <select name="tag">
-                <option value="">すべて</option>
+                <option value="">All</option>
                 ${allTags.map((tag) => `<option value="${esc(tag)}" ${tag === selectedTag ? "selected" : ""}>${esc(tag)}</option>`).join("")}
               </select>
             </label>
-            <button type="submit" class="button button-secondary">条件を更新</button>
+            <button type="submit" class="button button-secondary">Update Filters</button>
           </form>
         </section>
         <div id="study-region"></div>
@@ -553,7 +553,7 @@ export function createApp(rootElement) {
     const draw = () => {
       const cards = filterStudyCards(context.cardsForCurrentPair, sessionStorage.getItem("phrase-forge:study-tag") || "");
       if (!cards.length) {
-        studyRegion.innerHTML = `<div class="empty-state">条件に合う学習カードがありません。</div>`;
+        studyRegion.innerHTML = `<div class="empty-state">No study cards match the current filters.</div>`;
         return;
       }
 
@@ -571,19 +571,19 @@ export function createApp(rootElement) {
           </div>
           <div class="study-back ${revealed ? "is-visible" : ""}">
             <dl class="study-definition">
-              <dt>訳</dt>
-              <dd>${esc(card.translation || card.meaning || "未入力")}</dd>
-              <dt>ニュアンス</dt>
-              <dd>${esc(card.nuance || card.notes || "未入力")}</dd>
+              <dt>Translation</dt>
+              <dd>${esc(card.translation || card.meaning || "Not entered")}</dd>
+              <dt>Nuance</dt>
+              <dd>${esc(card.nuance || card.notes || "Not entered")}</dd>
             </dl>
           </div>
           <div class="study-actions">
-            <button type="button" class="button button-secondary" id="prev-card">前へ</button>
+            <button type="button" class="button button-secondary" id="prev-card">Previous</button>
             <div class="confidence-row">
               <span>Confidence</span>
               <div class="star-group">${renderStarButtons(card.id, card.confidence, true)}</div>
             </div>
-            <button type="button" class="button button-primary" id="next-card">次へ</button>
+            <button type="button" class="button button-primary" id="next-card">Next</button>
           </div>
         </section>
       `;
@@ -639,14 +639,14 @@ export function createApp(rootElement) {
           </div>
           <form id="settings-form" class="form-grid">
             ${input("googleClientId", "Google Client ID", false, "xxxx.apps.googleusercontent.com")}
-            ${input("openAiModel", "OpenAI モデル", true, "例: gpt-4.1-mini")}
-            ${input("homeTagLimit", "ホームタグ数", true, "例: 5", "number")}
+            ${input("openAiModel", "OpenAI Model", true, "e.g. gpt-4.1-mini")}
+            ${input("homeTagLimit", "Home Tags Limit", true, "e.g. 5", "number")}
             <label class="field span-2">
-              <span>OpenAI API キー</span>
+              <span>OpenAI API Key</span>
               <input name="openAiApiKey" type="password" placeholder="sk-..." autocomplete="off" />
             </label>
             <div class="form-actions">
-              <button type="submit" class="button button-primary">設定を保存</button>
+              <button type="submit" class="button button-primary">Save Settings</button>
             </div>
           </form>
         </section>
@@ -660,24 +660,24 @@ export function createApp(rootElement) {
               <article class="person-row">
                 <div>
                   <strong>${esc(pairLabel(pair))}</strong>
-                  <p>${pair.id === context.currentPair?.id ? "現在選択中です。" : "切り替えて使えます。"}</p>
+                  <p>${pair.id === context.currentPair?.id ? "Currently selected." : "Available to switch."}</p>
                 </div>
                 <div class="row-actions">
-                  <button type="button" class="button button-secondary" data-activate-pair="${pair.id}">切り替え</button>
-                  <button type="button" class="button button-secondary" data-edit-pair="${pair.id}">編集</button>
-                  <button type="button" class="button button-secondary" data-delete-pair="${pair.id}">削除</button>
+                  <button type="button" class="button button-secondary" data-activate-pair="${pair.id}">Switch</button>
+                  <button type="button" class="button button-secondary" data-edit-pair="${pair.id}">Edit</button>
+                  <button type="button" class="button button-secondary" data-delete-pair="${pair.id}">Delete</button>
                 </div>
               </article>
             `).join("")}
           </div>
           <form id="pair-form" class="form-grid with-top-gap">
             <input type="hidden" name="pairId" value="${esc(editingPair?.id || "")}" />
-            ${input("pairName", "表示名", false, "例: 日本語 → 英語")}
-            ${input("nativeLanguage", "母国語", true, "例: 日本語")}
-            ${input("targetLanguage", "習得言語", true, "例: 英語")}
+            ${input("pairName", "Display Name", false, "e.g. Japanese -> English")}
+            ${input("nativeLanguage", "Native Language", true, "e.g. Japanese")}
+            ${input("targetLanguage", "Target Language", true, "e.g. English")}
             <div class="form-actions">
-              <button type="submit" class="button button-secondary">${editingPair ? "言語ペアを更新" : "言語ペアを追加"}</button>
-              ${editingPair ? '<button type="button" class="button button-secondary" id="cancel-pair-edit">編集をやめる</button>' : ""}
+              <button type="submit" class="button button-secondary">${editingPair ? "Update Language Pair" : "Add Language Pair"}</button>
+              ${editingPair ? '<button type="button" class="button button-secondary" id="cancel-pair-edit">Cancel Edit</button>' : ""}
             </div>
           </form>
         </section>
@@ -697,7 +697,7 @@ export function createApp(rootElement) {
     view.querySelectorAll("[data-activate-pair]").forEach((button) => {
       button.addEventListener("click", (event) => {
         store.updateActivePair(event.currentTarget.getAttribute("data-activate-pair"));
-        showFlash("言語ペアを切り替えました。");
+        showFlash("Language pair switched.");
       });
     });
 
@@ -715,22 +715,22 @@ export function createApp(rootElement) {
         if (!pair) {
           return;
         }
-        if (!confirm(`「${pairLabel(pair)}」を削除します。この言語ペアのカードも一緒に削除されます。`)) {
+        if (!confirm(`Delete "${pairLabel(pair)}"? Cards in this language pair will also be deleted.`)) {
           return;
         }
         const result = store.deleteLanguagePair(pairId);
         if (!result?.ok) {
           if (result?.reason === "last_pair") {
-            alert("最後の1件の言語ペアは削除できません。");
+            alert("You cannot delete the last remaining language pair.");
             return;
           }
-          alert("言語ペアを削除できませんでした。");
+          alert("Could not delete the language pair.");
           return;
         }
         if (editingPairId === pairId) {
           sessionStorage.removeItem("phrase-forge:editing-pair");
         }
-        showFlash("言語ペアを削除しました。");
+        showFlash("Language pair deleted.");
       });
     });
 
@@ -754,17 +754,17 @@ export function createApp(rootElement) {
       if (pairId) {
         const updated = store.updateLanguagePair(pairId, input);
         if (!updated) {
-          alert("言語ペアを更新できませんでした。");
+          alert("Could not update the language pair.");
           return;
         }
         store.updateActivePair(updated.id);
         sessionStorage.removeItem("phrase-forge:editing-pair");
-        showFlash("言語ペアを更新しました。");
+        showFlash("Language pair updated.");
         return;
       }
       const pair = store.addLanguagePair(input);
       store.updateActivePair(pair.id);
-      showFlash("言語ペアを追加しました。");
+      showFlash("Language pair added.");
     });
 
     view.querySelector("#settings-form").addEventListener("submit", (event) => {
@@ -776,7 +776,7 @@ export function createApp(rootElement) {
         homeTagLimit: data.get("homeTagLimit")?.toString().trim(),
         openAiApiKey: data.get("openAiApiKey")?.toString().trim(),
       });
-      showFlash("設定を保存しました。");
+      showFlash("Settings saved.");
     });
   }
 
@@ -803,11 +803,11 @@ export function createApp(rootElement) {
         if (!card) {
           return;
         }
-        if (!confirm(`「${card.expression}」を削除します。`)) {
+        if (!confirm(`Delete "${card.expression}"?`)) {
           return;
         }
         store.deleteCard(cardId);
-        showFlash("カードを削除しました。");
+        showFlash("Card deleted.");
       });
     });
   }
@@ -847,18 +847,18 @@ function authBadge(user) {
 
 function pageTitle(route) {
   return {
-    home: "ホーム",
-    cards: "カード一覧",
-    "card-new": "カード作成",
-    "card-detail": "カード詳細",
-    "card-edit": "カード編集",
-    study: "学習モード",
-    settings: "設定",
+    home: "Home",
+    cards: "Cards",
+    "card-new": "New Card",
+    "card-detail": "Card Details",
+    "card-edit": "Edit Card",
+    study: "Study Mode",
+    settings: "Settings",
   }[route.name] || "Phrase Forge";
 }
 
 function nav(href, label, active) {
-  return `<a class="nav-link ${active ? "is-active" : ""}" href="${href}" data-route>${label}</a>`;
+  return `<a class="nav-link ${active ? "★" : "☆"}" href="${href}" data-route>${label}</a>`;
 }
 
 function metricCard(label, value, copy) {
@@ -875,9 +875,9 @@ function homeCardRow(card) {
     <article class="person-row">
       <div>
         <strong>${esc(card.expression)}</strong>
-        <p>${esc(card.translation || card.meaning || "訳未入力")}</p>
+        <p>${esc(card.translation || card.meaning || "No translation")}</p>
       </div>
-      <a class="button button-secondary" href="#/cards/${card.id}" data-route>詳細</a>
+      <a class="button button-secondary" href="#/cards/${card.id}" data-route>Details</a>
     </article>
   `;
 }
@@ -894,33 +894,33 @@ function cardPreview(card) {
       </div>
       ${card.type === "idiom" ? `
         <div class="preview-block">
-          <span class="preview-label">例文</span>
-          <div class="preview-value">${highlightExpression(card.example || "未入力", card.expression, card.type)}</div>
+          <span class="preview-label">Example</span>
+          <div class="preview-value">${highlightExpression(card.example || "Not entered", card.expression, card.type)}</div>
         </div>
       ` : ""}
       <div class="preview-block">
-        <span class="preview-label">訳</span>
-        <p class="card-copy">${esc(card.translation || card.meaning || "未入力")}</p>
+        <span class="preview-label">Translation</span>
+        <p class="card-copy">${esc(card.translation || card.meaning || "Not entered")}</p>
       </div>
       <div class="preview-block">
-        <span class="preview-label">ニュアンス</span>
-        <p class="card-note">${esc(card.nuance || card.notes || "未入力")}</p>
+        <span class="preview-label">Nuance</span>
+        <p class="card-note">${esc(card.nuance || card.notes || "Not entered")}</p>
       </div>
       <div class="card-actions">
-        <a class="button button-primary" href="#/cards/${card.id}" data-route>詳細</a>
-        <a class="button button-secondary" href="#/cards/${card.id}/edit" data-route>編集</a>
-        <button type="button" class="button button-secondary" data-delete-card="${card.id}">削除</button>
+        <a class="button button-primary" href="#/cards/${card.id}" data-route>Details</a>
+        <a class="button button-secondary" href="#/cards/${card.id}/edit" data-route>Edit</a>
+        <button type="button" class="button button-secondary" data-delete-card="${card.id}">Delete</button>
       </div>
     </article>
   `;
 }
 
 function definition(label, value) {
-  return `<dl class="definition"><dt>${esc(label)}</dt><dd>${esc(value || "未入力")}</dd></dl>`;
+  return `<dl class="definition"><dt>${esc(label)}</dt><dd>${esc(value || "Not entered")}</dd></dl>`;
 }
 
 function richDefinition(label, html) {
-  return `<dl class="definition"><dt>${esc(label)}</dt><dd>${html || "未入力"}</dd></dl>`;
+  return `<dl class="definition"><dt>${esc(label)}</dt><dd>${html || "Not entered"}</dd></dl>`;
 }
 
 function input(name, label, required = false, placeholder = "", type = "text") {
@@ -972,7 +972,7 @@ function cardsForPair(cards, pairId) {
 }
 
 function uniqueTags(cards) {
-  return [...new Set(cards.flatMap((card) => card.tags))].sort((left, right) => left.localeCompare(right, "ja"));
+  return [...new Set(cards.flatMap((card) => card.tags))].sort((left, right) => left.localeCompare(right, "en"));
 }
 
 function getCardById(cards, cardId) {
@@ -985,9 +985,9 @@ function getPairById(pairs, pairId) {
 
 function pairLabel(pair) {
   if (!pair) {
-    return "未設定";
+    return "Not set";
   }
-  return pair.name || `${pair.nativeLanguage} → ${pair.targetLanguage}`;
+  return pair.name || `${pair.nativeLanguage} -> ${pair.targetLanguage}`;
 }
 
 function readDraftFromSession() {
@@ -1108,7 +1108,7 @@ function renderStarButtons(cardId, value, filledOnly = false) {
   return [1, 2, 3]
     .map((level) => {
       const active = level <= Number(value || 0);
-      return `<button type="button" class="star-button ${active ? "is-active" : ""} ${filledOnly ? "is-solid" : ""}" data-confidence-card="${cardId}" data-confidence-level="${level}" aria-label="Confidence ${level}">${active ? "★" : "☆"}</button>`;
+      return `<button type="button" class="star-button ${active ? "★" : "☆"} ${filledOnly ? "is-solid" : ""}" data-confidence-card="${cardId}" data-confidence-level="${level}" aria-label="Confidence ${level}">${active ? "★" : "☆"}</button>`;
     })
     .join("");
 }
@@ -1129,7 +1129,7 @@ function summarizeTopTags(cards, limit) {
       if (right[1] !== left[1]) {
         return right[1] - left[1];
       }
-      return left[0].localeCompare(right[0], "ja");
+      return left[0].localeCompare(right[0], "en");
     })
     .slice(0, limit)
     .map(([tag, count]) => ({ tag, count }));
@@ -1268,9 +1268,9 @@ function clampIndex(index, length) {
 }
 
 function formatApiError(error) {
-  const message = error?.message || "生成に失敗しました。";
+  const message = error?.message || "Failed to generate content.";
   if (message.includes("insufficient_quota") || message.includes("429")) {
-    return "OpenAI API の利用上限に達しています。Billing または残高をご確認ください。";
+    return "OpenAI API quota has been exceeded. Please check your billing or remaining balance.";
   }
   return message;
 }
