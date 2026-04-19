@@ -1299,6 +1299,10 @@ function idiomHighlightPatterns(expression) {
 
   patterns.push(buildFlexibleIdiomPattern(words));
 
+  if (isModalAuxiliary(lowered[0]) && words.length > 1) {
+    patterns.push(buildFlexibleIdiomPattern(words.slice(1)));
+  }
+
   if (lowered[0] === "be" && words.length > 1) {
     const tail = words.slice(1);
     patterns.push(buildFlexibleIdiomPattern(tail));
@@ -1308,7 +1312,7 @@ function idiomHighlightPatterns(expression) {
   if (words.length > 2 && isPronounLike(words[1])) {
     const verb = words[0];
     const tail = words.slice(2);
-    patterns.push(`${buildVerbFamilyPattern(verb)}\\s+\\w+\\s+${buildFlexibleIdiomPattern(tail)}`);
+    patterns.push(`${buildExpandedVerbFamilyPattern(verb)}\\s+\\w+\\s+${buildFlexibleIdiomPattern(tail)}`);
   }
 
   return [...new Set(patterns)].sort((left, right) => right.length - left.length);
@@ -1318,11 +1322,31 @@ function buildFlexibleIdiomPattern(words) {
   return words
     .map((word, index) => {
       if (index === 0) {
-        return buildVerbFamilyPattern(word);
+        return buildExpandedVerbFamilyPattern(word);
       }
       return buildIdiomWordPattern(word);
     })
     .join("\\s+");
+}
+
+function buildExpandedVerbFamilyPattern(word) {
+  const lowered = word.toLowerCase();
+  const irregularFamilies = {
+    be: "(?:be|am|are|is|was|were|been|being|['â€™]m|['â€™]re|['â€™]s)",
+    cut: "(?:cut|cuts|cutting)",
+    drive: "(?:drive|drives|drove|driven|driving)",
+    feel: "(?:feel|feels|felt|feeling)",
+    give: "(?:give|gives|gave|given|giving)",
+    let: "(?:let|lets|letting)",
+    pick: "(?:pick|picks|picked|picking)",
+  };
+  if (irregularFamilies[lowered]) {
+    return irregularFamilies[lowered];
+  }
+  if (lowered.endsWith("e")) {
+    return `(?:${escapeRegExp(word)}|${escapeRegExp(`${word}s`)}|${escapeRegExp(`${word}d`)}|${escapeRegExp(`${word.slice(0, -1)}ing`)})`;
+  }
+  return `(?:${escapeRegExp(word)}|${escapeRegExp(`${word}s`)}|${escapeRegExp(`${word}ed`)}|${escapeRegExp(`${word}ing`)})`;
 }
 
 function buildVerbFamilyPattern(word) {
@@ -1355,6 +1379,10 @@ function buildIdiomWordPattern(word) {
 
 function isPronounLike(word) {
   return /^(someone|somebody|something|anyone|anybody|me|you|him|her|us|them|sb|sth|one's|oneself)$/i.test(word);
+}
+
+function isModalAuxiliary(word) {
+  return /^(can|could|may|might|must|shall|should|will|would)$/i.test(word);
 }
 
 function mergeRanges(ranges) {
