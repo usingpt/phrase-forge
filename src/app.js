@@ -949,11 +949,11 @@ function cardPreview(card) {
   return `
     <article class="card">
       <div class="card-head">
-        <div>
+        <div class="star-group compact">${renderStarButtons(card.id, card.confidence)}</div>
+        <div class="card-title-block">
           <p class="eyebrow">${esc(card.type === "idiom" ? "Idiom" : "Phrase")}</p>
           <h4>${esc(card.expression)}</h4>
         </div>
-        <div class="star-group compact">${renderStarButtons(card.id, card.confidence)}</div>
       </div>
       ${card.type === "idiom" ? `
         <div class="preview-block">

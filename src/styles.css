@@ -507,6 +507,20 @@ button {
   align-items: flex-start;
 }
 
+.card-head {
+  flex-direction: column;
+}
+
+.card-head .star-group {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.card-title-block {
+  width: 100%;
+  min-width: 0;
+}
+
 .row-actions {
   display: flex;
   gap: 10px;
@@ -752,15 +766,6 @@ button {
 
   .page-stat {
     padding: 4px 8px;
-  }
-
-  .card-head {
-    flex-direction: column;
-  }
-
-  .card-head .star-group {
-    width: 100%;
-    justify-content: flex-end;
   }
 
   .card h4 {
