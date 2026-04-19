@@ -85,9 +85,6 @@ export async function createApp(rootElement) {
       <div class="app-shell">
         <header class="app-header">
           <div class="header-main">
-            <div class="brand-block">
-              <a class="brand brand-link" href="#/home" data-route>Phrase Forge</a>
-            </div>
             <div class="header-actions">
               ${iconLink({ href: "#/home", label: "Home", icon: "home", active: route.name === "home", className: "button button-secondary icon-button nav-icon-button" })}
               ${iconLink({ href: "#/cards", label: "Cards", icon: "cards", active: ["cards", "card-new", "card-detail", "card-edit"].includes(route.name), className: "button button-secondary icon-button nav-icon-button" })}
@@ -108,6 +105,7 @@ export async function createApp(rootElement) {
 
           <div id="flash-region">${flashMessage ? `<div class="flash-message">${esc(flashMessage)}</div>` : ""}</div>
           <section id="view"></section>
+          ${renderPageFooter(route)}
         </main>
       </div>
     `;
@@ -865,6 +863,17 @@ function showPageStats(routeName) {
 
 function pageStat(label, value) {
   return `<span class="page-stat"><span class="page-stat-label">${esc(label)}</span><strong>${esc(value)}</strong></span>`;
+}
+
+function renderPageFooter(route) {
+  if (route.name === "home") {
+    return "";
+  }
+  return `
+    <footer class="page-footer">
+      <a class="page-footer-brand" href="#/home" data-route>Phrase Forge</a>
+    </footer>
+  `;
 }
 
 function homeCardRow(card) {

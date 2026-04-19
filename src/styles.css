@@ -77,22 +77,10 @@ button {
 
 .header-main {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-}
-
-.brand {
-  margin: 0;
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.brand-link {
-  display: inline-block;
+  gap: 12px;
+  padding: 12px;
 }
 
 .header-note {
@@ -105,10 +93,16 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
   flex-wrap: nowrap;
   overflow-x: auto;
-  margin-left: auto;
+  width: 100%;
+  justify-content: flex-start;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.header-actions::-webkit-scrollbar {
+  display: none;
 }
 
 .field {
@@ -235,6 +229,20 @@ button {
 .page-stat strong {
   font-size: 0.8rem;
   font-weight: 700;
+}
+
+.page-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+  padding-bottom: 8px;
+}
+
+.page-footer-brand {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(104, 117, 155, 0.78);
 }
 
 .topbar-copy,
@@ -629,11 +637,7 @@ button {
   }
 
   .header-main {
-    gap: 12px;
-  }
-
-  .header-actions {
-    flex: 1 1 auto;
+    padding: 10px;
   }
 
   .grid-2,
@@ -701,7 +705,7 @@ button {
   }
 
   .header-actions {
-    gap: 10px;
+    gap: 8px;
   }
 
   .page-head {
@@ -744,5 +748,15 @@ button {
     width: 42px;
     min-width: 42px;
     padding: 0;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    min-height: 0;
   }
 }
