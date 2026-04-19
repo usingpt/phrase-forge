@@ -406,6 +406,12 @@ button {
   border: 1px solid var(--line);
 }
 
+.type-chip {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+}
+
 .grid-2,
 .grid-3,
 .toolbar,

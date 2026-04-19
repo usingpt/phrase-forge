@@ -247,11 +247,12 @@ export async function createApp(rootElement) {
           <div></div>
           <div class="card-actions">
             ${iconButton({ id: "toggle-filters", label: filtersCollapsed ? "Show filters" : "Hide filters", icon: "filter", className: `button button-secondary icon-button ${filtersCollapsed ? "" : "is-active"}` })}
+            <button type="button" class="button button-secondary type-chip ${savedFilters.type === "idiom" ? "is-active" : ""}" id="type-idiom">Idiom</button>
+            <button type="button" class="button button-secondary type-chip ${savedFilters.type === "phrase" ? "is-active" : ""}" id="type-phrase">Phrase</button>
           </div>
         </div>
         <div class="toolbar toolbar-4 ${filtersCollapsed ? "is-collapsed" : ""}" id="cards-toolbar">
           <label class="field"><span>Search</span><input id="search" type="search" placeholder="Search expressions, examples, translations, or nuance" /></label>
-          <label class="field"><span>Type</span><select id="type-filter"><option value="">All</option>${CARD_TYPES.map((type) => `<option value="${type.value}">${type.label}</option>`).join("")}</select></label>
           <label class="field"><span>Tags</span><select id="tag-filter"><option value="">All</option>${uniqueTags(context.cardsForCurrentPair).map((tag) => `<option value="${esc(tag)}">${esc(tag)}</option>`).join("")}</select></label>
           <label class="field"><span>Confidence</span><select id="confidence-filter">${CONFIDENCE_LEVELS.map((level) => `<option value="${level.value}">${level.label}</option>`).join("")}</select></label>
         </div>
@@ -261,15 +262,15 @@ export async function createApp(rootElement) {
     `;
 
     const search = view.querySelector("#search");
-    const type = view.querySelector("#type-filter");
     const tag = view.querySelector("#tag-filter");
     const confidence = view.querySelector("#confidence-filter");
     const toggleFilters = view.querySelector("#toggle-filters");
+    const idiomButton = view.querySelector("#type-idiom");
+    const phraseButton = view.querySelector("#type-phrase");
     const toolbar = view.querySelector("#cards-toolbar");
     const pagination = view.querySelector("#card-pagination");
 
     search.value = savedFilters.query;
-    type.value = savedFilters.type;
     tag.value = savedFilters.tag;
     confidence.value = savedFilters.confidence;
 
@@ -284,13 +285,13 @@ export async function createApp(rootElement) {
     const update = () => {
       writeCardsFilterState({
         query: search.value,
-        type: type.value,
+        type: savedFilters.type,
         tag: tag.value,
         confidence: confidence.value,
       });
       const items = filterCards(context.cards, {
         query: search.value,
-        type: type.value,
+        type: savedFilters.type,
         tag: tag.value,
         confidence: confidence.value,
         pairId: context.currentPair?.id || "",
@@ -325,6 +326,13 @@ export async function createApp(rootElement) {
       update();
     };
 
+    const selectType = (nextType) => {
+      savedFilters.type = nextType;
+      idiomButton.classList.toggle("is-active", nextType === "idiom");
+      phraseButton.classList.toggle("is-active", nextType === "phrase");
+      resetPageAndUpdate();
+    };
+
     function bindPagination(totalPages) {
       const prevButton = view.querySelector("#cards-prev-page");
       const nextButton = view.querySelector("#cards-next-page");
@@ -345,9 +353,10 @@ export async function createApp(rootElement) {
     }
 
     search.addEventListener("input", resetPageAndUpdate);
-    type.addEventListener("change", resetPageAndUpdate);
     tag.addEventListener("change", resetPageAndUpdate);
     confidence.addEventListener("change", resetPageAndUpdate);
+    idiomButton.addEventListener("click", () => selectType("idiom"));
+    phraseButton.addEventListener("click", () => selectType("phrase"));
     update();
   }
 
@@ -1108,7 +1117,7 @@ function readCardsFilterState() {
     const parsed = raw ? JSON.parse(raw) : {};
     return {
       query: parsed.query || "",
-      type: parsed.type || "",
+      type: parsed.type === "phrase" ? "phrase" : "idiom",
       tag: parsed.tag || "",
       confidence: parsed.confidence || "",
     };
@@ -1116,7 +1125,7 @@ function readCardsFilterState() {
     console.error("Failed to read cards filter state.", error);
     return {
       query: "",
-      type: "",
+      type: "idiom",
       tag: "",
       confidence: "",
     };
