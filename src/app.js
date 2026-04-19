@@ -588,14 +588,15 @@ export async function createApp(rootElement) {
             <dl class="study-definition">
               <dt>Translation</dt>
               <dd>${esc(card.translation || card.meaning || "Not entered")}</dd>
+              <dt>Example Translation</dt>
+              <dd>${esc(card.exampleTranslation || "Not entered")}</dd>
               <dt>Nuance</dt>
               <dd>${esc(card.nuance || card.notes || "Not entered")}</dd>
             </dl>
           </div>
           <div class="study-actions">
-            <button type="button" class="button button-secondary" id="prev-card">Previous</button>
+            <button type="button" class="button button-secondary" id="prev-card">Prev</button>
             <div class="confidence-row">
-              <span>Confidence</span>
               <div class="star-group">${renderStarButtons(card.id, card.confidence, true)}</div>
             </div>
             <button type="button" class="button button-primary" id="next-card">Next</button>
@@ -854,7 +855,6 @@ function authBadge(user) {
       ${user.picture ? `<img src="${esc(user.picture)}" alt="${esc(user.name)}" />` : ""}
       <div>
         <strong>${esc(user.name || "Google User")}</strong>
-        <p>${esc(user.email || "")}</p>
       </div>
     </div>
   `;

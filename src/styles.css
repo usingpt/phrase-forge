@@ -135,6 +135,7 @@ button {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .field {
@@ -208,6 +209,7 @@ button {
   padding: 8px 10px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.62);
+  min-width: 0;
 }
 
 .auth-button {
@@ -221,10 +223,11 @@ button {
   object-fit: cover;
 }
 
-.auth-badge p {
-  margin: 2px 0 0;
-  font-size: 0.8rem;
-  color: var(--muted);
+.auth-badge strong {
+  display: block;
+  min-width: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
 }
 
 .menu-button {
@@ -617,6 +620,7 @@ button {
   margin: 0 0 18px;
   font-size: 2rem;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .study-example {
@@ -658,11 +662,31 @@ button {
     flex-direction: column;
   }
 
+  .header-main {
+    align-items: stretch;
+  }
+
   .header-stats {
     width: 100%;
     justify-content: flex-start;
     overflow-x: auto;
     padding-bottom: 2px;
+  }
+
+  .header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .auth-slot {
+    min-width: 0;
+  }
+
+  .auth-badge {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .grid-2,
@@ -711,5 +735,62 @@ button {
   .study-filter-form .field span,
   .study-filter-form .field select {
     grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    padding: 12px 12px 0;
+  }
+
+  .content {
+    padding: 16px 12px 28px;
+  }
+
+  .header-main,
+  .header-menu,
+  .panel,
+  .hero-panel {
+    border-radius: 22px;
+  }
+
+  .header-actions {
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .auth-slot {
+    grid-column: 1 / -1;
+  }
+
+  .compact-field select {
+    min-width: 0;
+  }
+
+  .study-card {
+    padding: 22px;
+  }
+
+  .study-expression {
+    font-size: 1.7rem;
+    margin-bottom: 14px;
+  }
+
+  .study-example {
+    font-size: 1.2rem;
+    line-height: 1.6;
+  }
+
+  .study-actions {
+    justify-content: space-between;
+  }
+
+  .confidence-row {
+    gap: 8px;
+  }
+
+  .button {
+    min-height: 42px;
+    padding: 0 16px;
   }
 }
