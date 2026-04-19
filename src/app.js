@@ -4,6 +4,7 @@ import { createFlashcardGenerationService } from "./services/flashcardGeneration
 import { createStorage } from "./services/storage.js";
 import { loadAppConfig } from "./services/appConfigService.js";
 import { createCloudService } from "./services/cloudService.js";
+import { loadOpenAiModels } from "./services/openAiModelsService.js";
 import { formatDateTime } from "./utils/formatters.js";
 
 const CARD_TYPES = [
@@ -33,6 +34,7 @@ export async function createApp(rootElement) {
   `;
 
   const appConfig = await loadAppConfig();
+  const availableOpenAiModels = await loadOpenAiModels(appConfig.openAiModel);
   const cloud = await createCloudService(appConfig);
   const store = createStore({
     storage: createStorage({ cloud }),
@@ -74,7 +76,7 @@ export async function createApp(rootElement) {
     rootElement.innerHTML = layout(route, user, languagePairs, currentPair, cards);
     bindRoutes();
     bindFlash();
-    renderView(route, state, { ownerId, user, languagePairs, currentPair, cards, cardsForCurrentPair, state });
+    renderView(route, state, { ownerId, user, languagePairs, currentPair, cards, cardsForCurrentPair, state, availableOpenAiModels });
     bindGlobalUi();
   }
 
@@ -655,6 +657,12 @@ export async function createApp(rootElement) {
             <div></div>
           </div>
           <form id="settings-form" class="form-grid">
+            <label class="field">
+              <span>OpenAI Model *</span>
+              <select name="openAiModel" required>
+                ${availableModelOptions(context.availableOpenAiModels, state.settings.openAiModel).map((model) => `<option value="${esc(model)}">${esc(model)}</option>`).join("")}
+              </select>
+            </label>
             ${input("homeTagLimit", "Home Tags Limit", true, "e.g. 5", "number")}
             ${input("cardsPerPage", "Cards Per Page", true, "e.g. 12", "number")}
             <div class="form-actions">
@@ -696,6 +704,7 @@ export async function createApp(rootElement) {
       </section>
     `;
 
+    setValue(view, "openAiModel", state.settings.openAiModel);
     setValue(view, "homeTagLimit", String(state.settings.homeTagLimit || 5));
     setValue(view, "cardsPerPage", String(state.settings.cardsPerPage || 12));
     if (editingPair) {
@@ -781,6 +790,7 @@ export async function createApp(rootElement) {
       event.preventDefault();
       const data = new FormData(event.currentTarget);
       await store.updateSettings({
+        openAiModel: data.get("openAiModel")?.toString().trim(),
         homeTagLimit: data.get("homeTagLimit")?.toString().trim(),
         cardsPerPage: data.get("cardsPerPage")?.toString().trim(),
       });
@@ -893,6 +903,10 @@ function showPageStats(routeName) {
 
 function pageStat(label, value) {
   return `<span class="page-stat"><span class="page-stat-label">${esc(label)}</span><strong>${esc(value)}</strong></span>`;
+}
+
+function availableModelOptions(models, selectedModel) {
+  return [...new Set([selectedModel, ...(models || [])].filter((item) => item?.toString().trim()))];
 }
 
 function pageStarStat(level, value) {
