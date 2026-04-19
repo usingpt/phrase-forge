@@ -88,37 +88,23 @@ export async function createApp(rootElement) {
             <div class="brand-block">
               <a class="brand brand-link" href="#/home" data-route>Phrase Forge</a>
             </div>
-            <div class="header-stats">
-              <span class="header-stat"><span class="header-stat-label">User</span><strong>${esc(user?.name || "Guest")}</strong></span>
-              <span class="header-stat"><span class="header-stat-label">Cards</span><strong>${stats.total}</strong></span>
-              <span class="header-stat"><span class="header-stat-label">Stars 1-2</span><strong>${stats.confidence[1] + stats.confidence[2]}</strong></span>
-            </div>
             <div class="header-actions">
-              <div class="auth-slot">
-                ${cloud.enabled
-                  ? user
-                    ? iconButton({ id: "sign-out-button", label: "Sign out", icon: "logout", className: "button button-secondary icon-button header-icon-button" })
-                    : iconButton({ id: "sign-in-button", label: "Sign in with Google", icon: "login", className: "button button-secondary icon-button header-icon-button auth-button" })
-                  : '<span class="header-note">Local mode</span>'}
-              </div>
+              ${iconLink({ href: "#/home", label: "Home", icon: "home", active: route.name === "home", className: "button button-secondary icon-button nav-icon-button" })}
+              ${iconLink({ href: "#/cards", label: "Cards", icon: "cards", active: ["cards", "card-new", "card-detail", "card-edit"].includes(route.name), className: "button button-secondary icon-button nav-icon-button" })}
+              ${iconLink({ href: "#/study", label: "Study Mode", icon: "study", active: route.name === "study", className: "button button-secondary icon-button nav-icon-button" })}
+              ${iconLink({ href: "#/settings", label: "Settings", icon: "settings", active: route.name === "settings", className: "button button-secondary icon-button nav-icon-button" })}
+              ${iconLink({ href: "#/cards/new", label: "Add Card", icon: "add", className: "button button-primary icon-button nav-icon-button" })}
+              ${cloud.enabled
+                ? user
+                  ? profileButton(user)
+                  : iconButton({ id: "sign-in-button", label: "Sign in with Google", icon: "login", className: "button button-secondary icon-button header-icon-button auth-button" })
+                : '<span class="header-note">Local mode</span>'}
             </div>
           </div>
-          <nav class="header-shortcuts" aria-label="Primary">
-            ${iconLink({ href: "#/home", label: "Home", icon: "home", active: route.name === "home", className: "button button-secondary icon-button nav-icon-button" })}
-            ${iconLink({ href: "#/cards", label: "Cards", icon: "cards", active: ["cards", "card-new", "card-detail", "card-edit"].includes(route.name), className: "button button-secondary icon-button nav-icon-button" })}
-            ${iconLink({ href: "#/study", label: "Study Mode", icon: "study", active: route.name === "study", className: "button button-secondary icon-button nav-icon-button" })}
-            ${iconLink({ href: "#/settings", label: "Settings", icon: "settings", active: route.name === "settings", className: "button button-secondary icon-button nav-icon-button" })}
-            ${iconLink({ href: "#/cards/new", label: "Add Card", icon: "add", className: "button button-primary icon-button nav-icon-button" })}
-          </nav>
         </header>
 
         <main class="content">
-          <section class="page-head">
-            <div>
-              <p class="eyebrow">Flashcards</p>
-              <h1>${pageTitle(route)}</h1>
-            </div>
-          </section>
+          ${renderPageHead(route, stats)}
 
           <div id="flash-region">${flashMessage ? `<div class="flash-message">${esc(flashMessage)}</div>` : ""}</div>
           <section id="view"></section>
@@ -855,6 +841,32 @@ function metricCard(label, value, copy) {
   `;
 }
 
+function renderPageHead(route, stats) {
+  const meta = showPageStats(route.name)
+    ? `
+        <div class="page-head-stats">
+          ${pageStat("Cards", stats.total)}
+          ${pageStat("Stars 1-2", stats.confidence[1] + stats.confidence[2])}
+        </div>
+      `
+    : "";
+
+  return `
+    <section class="page-head">
+      <h1>${esc(pageTitle(route))}</h1>
+      ${meta}
+    </section>
+  `;
+}
+
+function showPageStats(routeName) {
+  return routeName === "cards" || routeName === "study";
+}
+
+function pageStat(label, value) {
+  return `<span class="page-stat"><span class="page-stat-label">${esc(label)}</span><strong>${esc(value)}</strong></span>`;
+}
+
 function homeCardRow(card) {
   return `
     <article class="person-row">
@@ -910,6 +922,13 @@ function iconButton({ id = "", type = "button", form = "", label, icon, classNam
   const formAttribute = form ? ` form="${form}"` : "";
   const extraAttributes = attributes ? ` ${attributes}` : "";
   return `<button${idAttribute} type="${type}" class="${className}" aria-label="${esc(label)}" title="${esc(label)}"${formAttribute}${extraAttributes}>${iconMarkup(icon)}</button>`;
+}
+
+function profileButton(user) {
+  const content = user?.picture
+    ? `<img class="profile-button-image" src="${esc(user.picture)}" alt="" />`
+    : iconMarkup("logout");
+  return `<button id="sign-out-button" type="button" class="button button-secondary icon-button header-icon-button profile-button" aria-label="Sign out" title="Sign out">${content}</button>`;
 }
 
 function iconMarkup(icon) {

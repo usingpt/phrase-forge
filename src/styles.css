@@ -59,7 +59,6 @@ button {
 }
 
 .header-main,
-.header-shortcuts,
 .panel,
 .hero-panel,
 .card,
@@ -71,7 +70,6 @@ button {
 }
 
 .header-main,
-.header-shortcuts,
 .panel,
 .hero-panel {
   border-radius: 24px;
@@ -83,34 +81,6 @@ button {
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-}
-
-.header-stats {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-  min-width: 0;
-}
-
-.header-stat {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.62);
-  white-space: nowrap;
-}
-
-.header-stat-label {
-  font-size: 0.7rem;
-  color: var(--muted);
-}
-
-.header-stat strong {
-  font-size: 0.8rem;
-  font-weight: 700;
 }
 
 .brand {
@@ -134,8 +104,11 @@ button {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin-left: auto;
 }
 
 .field {
@@ -202,20 +175,8 @@ button {
   border-radius: 14px;
 }
 
-.auth-slot,
-.header-shortcuts {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .auth-button {
   white-space: nowrap;
-}
-
-.header-shortcuts {
-  margin-top: 12px;
-  flex-wrap: wrap;
 }
 
 .content {
@@ -228,7 +189,8 @@ button {
 
 .summary-label,
 .eyebrow,
-.preview-label {
+.preview-label,
+.page-stat-label {
   display: block;
   font-size: 0.76rem;
   letter-spacing: 0.08em;
@@ -237,13 +199,42 @@ button {
 }
 
 .page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 18px;
 }
 
 .page-head h1 {
-  margin: 8px 0;
-  font-size: 1.2rem;
-  color: var(--accent-strong);
+  margin: 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.page-head-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.page-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  white-space: nowrap;
+}
+
+.page-stat strong {
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .topbar-copy,
@@ -371,6 +362,18 @@ button {
 .nav-icon-button,
 .header-icon-button {
   border-radius: 16px;
+}
+
+.profile-button {
+  overflow: hidden;
+}
+
+.profile-button-image {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .button-primary {
@@ -620,32 +623,17 @@ button {
 }
 
 @media (max-width: 1080px) {
-  .header-main,
   .hero-panel,
   .person-row {
     flex-direction: column;
   }
 
   .header-main {
-    align-items: stretch;
-  }
-
-  .header-stats {
-    width: 100%;
-    justify-content: flex-start;
-    overflow-x: auto;
-    padding-bottom: 2px;
+    gap: 12px;
   }
 
   .header-actions {
-    width: 100%;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-  }
-
-  .auth-slot {
-    min-width: 0;
+    flex: 1 1 auto;
   }
 
   .grid-2,
@@ -707,7 +695,6 @@ button {
   }
 
   .header-main,
-  .header-shortcuts,
   .panel,
   .hero-panel {
     border-radius: 22px;
@@ -715,7 +702,11 @@ button {
 
   .header-actions {
     gap: 10px;
-    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .page-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .compact-field select {
