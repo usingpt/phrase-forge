@@ -237,6 +237,8 @@ export async function createApp(rootElement) {
   function renderCards(view, context) {
     const savedFilters = readCardsFilterState();
     const filtersCollapsed = readCardsFilterCollapsed();
+    const pageSize = Math.max(1, Number(context.state.settings.cardsPerPage || 12));
+    let currentPage = clampPageNumber(Number(sessionStorage.getItem("phrase-forge:cards-page") || 1));
     view.innerHTML = `
       <section class="panel">
         <div class="section-head">
@@ -252,6 +254,7 @@ export async function createApp(rootElement) {
           <label class="field"><span>Confidence</span><select id="confidence-filter">${CONFIDENCE_LEVELS.map((level) => `<option value="${level.value}">${level.label}</option>`).join("")}</select></label>
         </div>
         <div id="card-list" class="card-grid"></div>
+        <div id="card-pagination"></div>
       </section>
     `;
 
@@ -261,6 +264,7 @@ export async function createApp(rootElement) {
     const confidence = view.querySelector("#confidence-filter");
     const toggleFilters = view.querySelector("#toggle-filters");
     const toolbar = view.querySelector("#cards-toolbar");
+    const pagination = view.querySelector("#card-pagination");
 
     search.value = savedFilters.query;
     type.value = savedFilters.type;
@@ -289,18 +293,59 @@ export async function createApp(rootElement) {
         confidence: confidence.value,
         pairId: context.currentPair?.id || "",
       });
+      const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+      currentPage = Math.min(currentPage, totalPages);
+      const startIndex = (currentPage - 1) * pageSize;
+      const visibleItems = items.slice(startIndex, startIndex + pageSize);
+
       view.querySelector("#card-list").innerHTML = items.length
-        ? items.map(cardPreview).join("")
+        ? visibleItems.map(cardPreview).join("")
         : `<div class="empty-state">No cards match the current filters. Try broadening your search.</div>`;
+      pagination.innerHTML = items.length > pageSize
+        ? `
+            <div class="pagination-bar">
+              ${iconButton({ id: "cards-prev-page", label: "Previous page", icon: "prev", className: "button button-secondary icon-button" })}
+              <span class="pagination-status">${currentPage} / ${totalPages}</span>
+              ${iconButton({ id: "cards-next-page", label: "Next page", icon: "next", className: "button button-secondary icon-button" })}
+            </div>
+          `
+        : "";
+      sessionStorage.setItem("phrase-forge:cards-page", String(currentPage));
       bindRoutes();
       bindConfidenceButtons(view);
       bindCardDeleteButtons(view);
+      bindPagination(totalPages);
     };
 
-    search.addEventListener("input", update);
-    type.addEventListener("change", update);
-    tag.addEventListener("change", update);
-    confidence.addEventListener("change", update);
+    const resetPageAndUpdate = () => {
+      currentPage = 1;
+      sessionStorage.setItem("phrase-forge:cards-page", "1");
+      update();
+    };
+
+    function bindPagination(totalPages) {
+      const prevButton = view.querySelector("#cards-prev-page");
+      const nextButton = view.querySelector("#cards-next-page");
+      if (prevButton) {
+        prevButton.disabled = currentPage <= 1;
+        prevButton.addEventListener("click", () => {
+          currentPage = Math.max(1, currentPage - 1);
+          update();
+        });
+      }
+      if (nextButton) {
+        nextButton.disabled = currentPage >= totalPages;
+        nextButton.addEventListener("click", () => {
+          currentPage = Math.min(totalPages, currentPage + 1);
+          update();
+        });
+      }
+    }
+
+    search.addEventListener("input", resetPageAndUpdate);
+    type.addEventListener("change", resetPageAndUpdate);
+    tag.addEventListener("change", resetPageAndUpdate);
+    confidence.addEventListener("change", resetPageAndUpdate);
     update();
   }
 
@@ -611,6 +656,7 @@ export async function createApp(rootElement) {
           </div>
           <form id="settings-form" class="form-grid">
             ${input("homeTagLimit", "Home Tags Limit", true, "e.g. 5", "number")}
+            ${input("cardsPerPage", "Cards Per Page", true, "e.g. 12", "number")}
             <div class="form-actions">
               ${iconButton({ type: "submit", label: "Save settings", icon: "save", className: "button button-primary icon-button" })}
             </div>
@@ -651,6 +697,7 @@ export async function createApp(rootElement) {
     `;
 
     setValue(view, "homeTagLimit", String(state.settings.homeTagLimit || 5));
+    setValue(view, "cardsPerPage", String(state.settings.cardsPerPage || 12));
     if (editingPair) {
       setValue(view, "pairName", editingPair.name);
       setValue(view, "nativeLanguage", editingPair.nativeLanguage);
@@ -735,6 +782,7 @@ export async function createApp(rootElement) {
       const data = new FormData(event.currentTarget);
       await store.updateSettings({
         homeTagLimit: data.get("homeTagLimit")?.toString().trim(),
+        cardsPerPage: data.get("cardsPerPage")?.toString().trim(),
       });
       showFlash("Settings saved.");
     });
@@ -824,7 +872,9 @@ function renderPageHead(route, stats) {
     ? `
         <div class="page-head-stats">
           ${pageStat("Cards", stats.total)}
-          ${pageStat("Stars 1-2", stats.confidence[1] + stats.confidence[2])}
+          ${pageStarStat(1, stats.confidence[1])}
+          ${pageStarStat(2, stats.confidence[2])}
+          ${pageStarStat(3, stats.confidence[3])}
         </div>
       `
     : "";
@@ -843,6 +893,10 @@ function showPageStats(routeName) {
 
 function pageStat(label, value) {
   return `<span class="page-stat"><span class="page-stat-label">${esc(label)}</span><strong>${esc(value)}</strong></span>`;
+}
+
+function pageStarStat(level, value) {
+  return `<span class="page-stat page-stat-stars"><span class="page-stat-symbol">${"★".repeat(level)}</span><strong>${esc(value)}</strong></span>`;
 }
 
 function renderPageFooter(route) {
@@ -1299,6 +1353,13 @@ function clampIndex(index, length) {
     return length - 1;
   }
   return index;
+}
+
+function clampPageNumber(page) {
+  if (Number.isNaN(page) || page < 1) {
+    return 1;
+  }
+  return Math.round(page);
 }
 
 function formatApiError(error) {
