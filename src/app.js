@@ -205,14 +205,6 @@ export async function createApp(rootElement) {
 
     view.innerHTML = `
       <section class="stack">
-        <div class="hero-panel hero-gradient hero-actions-only">
-          <div class="hero-actions">
-            ${iconLink({ href: "#/cards/new", label: "Add Card", icon: "add", className: "button button-primary icon-button" })}
-            ${iconLink({ href: "#/cards", label: "Cards", icon: "cards", className: "button button-secondary icon-button" })}
-            ${iconLink({ href: "#/study", label: "Study Mode", icon: "study", className: "button button-secondary icon-button" })}
-          </div>
-        </div>
-
         ${topTags.length ? `
           <section class="panel">
             <div class="tag-shortcuts">
@@ -250,7 +242,6 @@ export async function createApp(rootElement) {
         <div class="section-head">
           <div></div>
           <div class="card-actions">
-            ${iconLink({ href: "#/cards/new", label: "Add Card", icon: "add", className: "button button-primary icon-button" })}
             ${iconButton({ id: "toggle-filters", label: filtersCollapsed ? "Show filters" : "Hide filters", icon: "filter", className: `button button-secondary icon-button ${filtersCollapsed ? "" : "is-active"}` })}
           </div>
         </div>
@@ -619,16 +610,7 @@ export async function createApp(rootElement) {
             <div></div>
           </div>
           <form id="settings-form" class="form-grid">
-            ${input("openAiModel", "OpenAI Model", true, "e.g. gpt-4.1-mini")}
             ${input("homeTagLimit", "Home Tags Limit", true, "e.g. 5", "number")}
-            <div class="field span-2">
-              <span>Cloud Setup</span>
-              <div class="settings-note">${appConfig.features.cloudSync ? "Cards are synced with Supabase for signed-in users." : "Supabase is not configured yet. Cards stay local until SUPABASE_URL and SUPABASE_ANON_KEY are set in Vercel."}</div>
-            </div>
-            <div class="field span-2">
-              <span>Shared AI</span>
-              <div class="settings-note">${appConfig.features.sharedGeneration ? "OpenAI generation is managed server-side through Vercel environment variables." : "Shared OpenAI generation is not configured yet. Add OPENAI_API_KEY in Vercel to enable it."}</div>
-            </div>
             <div class="form-actions">
               ${iconButton({ type: "submit", label: "Save settings", icon: "save", className: "button button-primary icon-button" })}
             </div>
@@ -668,7 +650,6 @@ export async function createApp(rootElement) {
       </section>
     `;
 
-    setValue(view, "openAiModel", state.settings.openAiModel);
     setValue(view, "homeTagLimit", String(state.settings.homeTagLimit || 5));
     if (editingPair) {
       setValue(view, "pairName", editingPair.name);
@@ -753,7 +734,6 @@ export async function createApp(rootElement) {
       event.preventDefault();
       const data = new FormData(event.currentTarget);
       await store.updateSettings({
-        openAiModel: data.get("openAiModel")?.toString().trim(),
         homeTagLimit: data.get("homeTagLimit")?.toString().trim(),
       });
       showFlash("Settings saved.");
