@@ -1294,7 +1294,7 @@ function idiomHighlightPatterns(expression) {
     return [];
   }
   const patterns = [];
-  const words = normalized.split(/\s+/);
+  const words = normalized.split(/\s+/).map(normalizeIdiomToken).filter(Boolean);
   const lowered = words.map((word) => word.toLowerCase());
 
   patterns.push(buildFlexibleIdiomPattern(words));
@@ -1333,6 +1333,7 @@ function buildExpandedVerbFamilyPattern(word) {
   const lowered = word.toLowerCase();
   const irregularFamilies = {
     be: "(?:be|am|are|is|was|were|been|being|['â€™]m|['â€™]re|['â€™]s)",
+    come: "(?:come|comes|came|coming)",
     cut: "(?:cut|cuts|cutting)",
     drive: "(?:drive|drives|drove|driven|driving)",
     feel: "(?:feel|feels|felt|feeling)",
@@ -1375,6 +1376,10 @@ function buildIdiomWordPattern(word) {
     return "(?:myself|yourself|himself|herself|ourselves|themselves|oneself)";
   }
   return escapeRegExp(word);
+}
+
+function normalizeIdiomToken(word) {
+  return word.replace(/^[^\w]+|[^\w'.’]+$/g, "");
 }
 
 function isPronounLike(word) {
