@@ -1,85 +1,16 @@
 export function createFlashcardGenerationService() {
-  async function generateDraft({ apiKey, model, nativeLanguage, targetLanguage, type, expression }) {
-    if (!apiKey) {
-      throw new Error("OpenAI API key is not configured.");
-    }
-
-    const schema = {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        type: {
-          type: "string",
-          enum: ["idiom", "phrase"],
-        },
-        expression: {
-          type: "string",
-        },
-        translation: {
-          type: "string",
-        },
-        meaning: {
-          type: "string",
-        },
-        example: {
-          type: "string",
-        },
-        exampleTranslation: {
-          type: "string",
-        },
-        nuance: {
-          type: "string",
-        },
-        notes: {
-          type: "string",
-        },
-        tags: {
-          type: "array",
-          items: {
-            type: "string",
-          },
-        },
-      },
-      required: ["type", "expression", "translation", "meaning", "example", "exampleTranslation", "nuance", "notes", "tags"],
-    };
-
-    const instructions = [
-      `You are generating a flashcard for language learners whose native language is ${nativeLanguage} and target language is ${targetLanguage}.`,
-      "Return concise, natural study content.",
-      "Keep all target-language examples in the target language.",
-      "Keep explanations, translations, nuance, and notes in the native language.",
-      "If the card type is idiom: fill meaning, example, exampleTranslation, nuance, and tags. Translation may be blank.",
-      "If the card type is phrase: fill translation, notes, and tags. Meaning/example/exampleTranslation/nuance may be blank when not needed.",
-      "Use 2 to 5 short tags helpful for review.",
-      "Do not include markdown.",
-    ].join("\n");
-
-    const userPrompt = [
-      `Card type: ${type}`,
-      `Expression: ${expression}`,
-      `Native language: ${nativeLanguage}`,
-      `Target language: ${targetLanguage}`,
-      "Generate a study card draft.",
-    ].join("\n");
-
-    const response = await fetch("https://api.openai.com/v1/responses", {
+  async function generateDraft({ model, nativeLanguage, targetLanguage, type, expression }) {
+    const response = await fetch("/api/generate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: model || "gpt-4.1-mini",
-        instructions,
-        input: userPrompt,
-        text: {
-          format: {
-            type: "json_schema",
-            name: "flashcard_draft",
-            schema,
-            strict: true,
-          },
-        },
+        model,
+        nativeLanguage,
+        targetLanguage,
+        type,
+        expression,
       }),
     });
 

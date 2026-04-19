@@ -3,12 +3,11 @@ import { createSampleData } from "../data/sampleData.js";
 
 const GUEST_OWNER_ID = "guest-local";
 
-export function createStore() {
-  const storage = createStorage();
-  const initialState = storage.load() || createSampleData();
-  let state = normalizeState(initialState);
+export function createStore({ storage = createStorage(), defaultOpenAiModel = "gpt-4.1-mini" } = {}) {
+  const initialState = storage.loadLocal() || createSampleData();
+  let state = normalizeState(initialState, defaultOpenAiModel);
 
-  storage.save(state);
+  storage.saveLocal(state);
 
   function getState() {
     return state;
@@ -18,7 +17,16 @@ export function createStore() {
     return state.settings.currentUser?.id || GUEST_OWNER_ID;
   }
 
-  function addCard(input) {
+  async function persistCurrentOwner() {
+    storage.saveLocal(state);
+    const ownerId = getOwnerId();
+    if (ownerId === GUEST_OWNER_ID) {
+      return;
+    }
+    await storage.saveRemote(ownerId, workspaceFromState(state, ownerId));
+  }
+
+  async function addCard(input) {
     const timestamp = new Date().toISOString();
     const card = {
       id: crypto.randomUUID(),
@@ -32,11 +40,11 @@ export function createStore() {
       ...state,
       cards: [card, ...state.cards],
     };
-    storage.save(state);
+    await persistCurrentOwner();
     return card;
   }
 
-  function updateCard(cardId, input) {
+  async function updateCard(cardId, input) {
     const existing = state.cards.find((card) => card.id === cardId && card.ownerId === getOwnerId());
     if (!existing) {
       return null;
@@ -53,11 +61,11 @@ export function createStore() {
       ...state,
       cards: state.cards.map((card) => (card.id === cardId ? updated : card)),
     };
-    storage.save(state);
+    await persistCurrentOwner();
     return updated;
   }
 
-  function updateCardConfidence(cardId, confidence) {
+  async function updateCardConfidence(cardId, confidence) {
     const existing = state.cards.find((card) => card.id === cardId && card.ownerId === getOwnerId());
     if (!existing) {
       return null;
@@ -69,7 +77,7 @@ export function createStore() {
     });
   }
 
-  function deleteCard(cardId) {
+  async function deleteCard(cardId) {
     const exists = state.cards.some((card) => card.id === cardId && card.ownerId === getOwnerId());
     if (!exists) {
       return false;
@@ -78,11 +86,11 @@ export function createStore() {
       ...state,
       cards: state.cards.filter((card) => !(card.id === cardId && card.ownerId === getOwnerId())),
     };
-    storage.save(state);
+    await persistCurrentOwner();
     return true;
   }
 
-  function addLanguagePair(input) {
+  async function addLanguagePair(input) {
     const pair = normalizeLanguagePair({
       id: crypto.randomUUID(),
       name: input.name,
@@ -100,11 +108,11 @@ export function createStore() {
         updatedAt: new Date().toISOString(),
       },
     };
-    storage.save(state);
+    await persistCurrentOwner();
     return pair;
   }
 
-  function updateLanguagePair(pairId, input) {
+  async function updateLanguagePair(pairId, input) {
     const existing = state.languagePairs.find((pair) => pair.id === pairId && pair.ownerId === getOwnerId());
     if (!existing) {
       return null;
@@ -121,11 +129,11 @@ export function createStore() {
       ...state,
       languagePairs: state.languagePairs.map((pair) => (pair.id === pairId ? updated : pair)),
     };
-    storage.save(state);
+    await persistCurrentOwner();
     return updated;
   }
 
-  function deleteLanguagePair(pairId) {
+  async function deleteLanguagePair(pairId) {
     const ownerId = getOwnerId();
     const ownerPairs = state.languagePairs.filter((pair) => pair.ownerId === ownerId);
     const existing = ownerPairs.find((pair) => pair.id === pairId);
@@ -149,11 +157,11 @@ export function createStore() {
         updatedAt: new Date().toISOString(),
       },
     };
-    storage.save(state);
+    await persistCurrentOwner();
     return { ok: true };
   }
 
-  function updateActivePair(pairId) {
+  async function updateActivePair(pairId) {
     const exists = state.languagePairs.some((pair) => pair.id === pairId && pair.ownerId === getOwnerId());
     if (!exists) {
       return null;
@@ -166,50 +174,54 @@ export function createStore() {
         updatedAt: new Date().toISOString(),
       },
     };
-    storage.save(state);
+    await persistCurrentOwner();
     return pairId;
   }
 
-  function updateCurrentUser(user) {
+  async function updateCurrentUser(user) {
     const ownerId = user?.id || GUEST_OWNER_ID;
     state = {
       ...state,
       settings: {
         ...state.settings,
-        currentUser: user
-          ? {
-              id: user.id,
-              name: user.name || "",
-              email: user.email || "",
-              picture: user.picture || "",
-            }
-          : null,
+        currentUser: normalizeCurrentUser(user),
         updatedAt: new Date().toISOString(),
       },
     };
     state = ensureWorkspaceForOwner(state, ownerId);
-    storage.save(state);
+    storage.saveLocal(state);
+
+    if (ownerId === GUEST_OWNER_ID) {
+      return state.settings.currentUser;
+    }
+
+    const remoteWorkspace = await storage.loadRemote(ownerId);
+    if (remoteWorkspace) {
+      state = applyWorkspace(state, ownerId, remoteWorkspace, defaultOpenAiModel);
+      storage.saveLocal(state);
+      return state.settings.currentUser;
+    }
+
+    await storage.saveRemote(ownerId, workspaceFromState(state, ownerId));
     return state.settings.currentUser;
   }
 
-  function updateSettings(input) {
+  async function updateSettings(input) {
     state = {
       ...state,
       settings: {
         ...state.settings,
         openAiModel: input.openAiModel || state.settings.openAiModel,
-        openAiApiKey: input.openAiApiKey ?? state.settings.openAiApiKey,
-        googleClientId: input.googleClientId ?? state.settings.googleClientId,
         homeTagLimit: clampHomeTagLimit(input.homeTagLimit ?? state.settings.homeTagLimit),
         updatedAt: new Date().toISOString(),
       },
     };
-    storage.save(state);
+    await persistCurrentOwner();
     return state.settings;
   }
 
   function resetSampleData() {
-    state = normalizeState(createSampleData());
+    state = normalizeState(createSampleData(), defaultOpenAiModel);
     storage.resetWith(state);
   }
 
@@ -229,7 +241,7 @@ export function createStore() {
   };
 }
 
-function normalizeState(input) {
+function normalizeState(input, defaultOpenAiModel) {
   const languagePairs = Array.isArray(input.languagePairs) && input.languagePairs.length
     ? input.languagePairs.map(normalizeLanguagePair)
     : [
@@ -247,9 +259,7 @@ function normalizeState(input) {
     cards: Array.isArray(input.cards) ? input.cards.map((card) => normalizeCard(card, languagePairs[0].id)) : [],
     settings: {
       activePairId: input.settings?.activePairId || languagePairs[0].id,
-      openAiApiKey: input.settings?.openAiApiKey || "",
-      openAiModel: input.settings?.openAiModel || "gpt-4.1-mini",
-      googleClientId: input.settings?.googleClientId || "",
+      openAiModel: input.settings?.openAiModel || defaultOpenAiModel,
       homeTagLimit: clampHomeTagLimit(input.settings?.homeTagLimit || 5),
       currentUser: normalizeCurrentUser(input.settings?.currentUser),
       updatedAt: input.settings?.updatedAt || "",
@@ -380,4 +390,46 @@ function clampHomeTagLimit(value) {
     return 20;
   }
   return Math.round(numeric);
+}
+
+function workspaceFromState(state, ownerId) {
+  return {
+    languagePairs: state.languagePairs
+      .filter((pair) => pair.ownerId === ownerId)
+      .map(({ ownerId: _ownerId, ...pair }) => pair),
+    cards: state.cards
+      .filter((card) => card.ownerId === ownerId)
+      .map(({ ownerId: _ownerId, ...card }) => card),
+    settings: {
+      activePairId: state.settings.activePairId,
+      openAiModel: state.settings.openAiModel,
+      homeTagLimit: state.settings.homeTagLimit,
+    },
+  };
+}
+
+function applyWorkspace(state, ownerId, workspace, defaultOpenAiModel) {
+  const nextPairs = (workspace.languagePairs || []).map((pair) => normalizeLanguagePair({ ...pair, ownerId }));
+  const fallbackPairId = nextPairs[0]?.id || crypto.randomUUID();
+  const nextCards = (workspace.cards || []).map((card) => normalizeCard({ ...card, ownerId }, fallbackPairId));
+
+  const merged = {
+    ...state,
+    languagePairs: [
+      ...state.languagePairs.filter((pair) => pair.ownerId !== ownerId),
+      ...nextPairs,
+    ],
+    cards: [
+      ...state.cards.filter((card) => card.ownerId !== ownerId),
+      ...nextCards,
+    ],
+    settings: {
+      ...state.settings,
+      activePairId: workspace.settings?.activePairId || nextPairs[0]?.id || state.settings.activePairId,
+      openAiModel: workspace.settings?.openAiModel || state.settings.openAiModel || defaultOpenAiModel,
+      homeTagLimit: clampHomeTagLimit(workspace.settings?.homeTagLimit || state.settings.homeTagLimit),
+    },
+  };
+
+  return ensureWorkspaceForOwner(merged, ownerId);
 }

@@ -1,6 +1,9 @@
 import { createRouter } from "./router.js";
 import { createStore } from "./state/store.js";
 import { createFlashcardGenerationService } from "./services/flashcardGenerationService.js";
+import { createStorage } from "./services/storage.js";
+import { loadAppConfig } from "./services/appConfigService.js";
+import { createCloudService } from "./services/cloudService.js";
 import { formatDateTime } from "./utils/formatters.js";
 
 const CARD_TYPES = [
@@ -18,11 +21,45 @@ const CONFIDENCE_LEVELS = [
 
 const GUEST_OWNER_ID = "guest-local";
 
-export function createApp(rootElement) {
-  const store = createStore();
+export async function createApp(rootElement) {
+  rootElement.innerHTML = `
+    <div class="app-shell">
+      <main class="content">
+        <section class="panel">
+          <p>Loading Phrase Forge...</p>
+        </section>
+      </main>
+    </div>
+  `;
+
+  const appConfig = await loadAppConfig();
+  const cloud = await createCloudService(appConfig);
+  const store = createStore({
+    storage: createStorage({ cloud }),
+    defaultOpenAiModel: appConfig.openAiModel,
+  });
   const generator = createFlashcardGenerationService();
   const router = createRouter({ onRouteChange: render });
   let flashMessage = "";
+  let authReady = false;
+
+  await store.updateCurrentUser(await cloud.getCurrentUser());
+
+  cloud.onAuthStateChange(async (user) => {
+    if (!authReady) {
+      return;
+    }
+
+    const previousUserId = store.getState().settings.currentUser?.id || "";
+    const nextUserId = user?.id || "";
+    await store.updateCurrentUser(user);
+
+    if (previousUserId !== nextUserId) {
+      flashMessage = user ? "Signed in with Google." : "Signed out.";
+    }
+
+    render();
+  });
 
   function render() {
     const route = router.getCurrentRoute();
@@ -38,8 +75,7 @@ export function createApp(rootElement) {
     bindRoutes();
     bindFlash();
     renderView(route, state, { ownerId, user, languagePairs, currentPair, cards, cardsForCurrentPair, state });
-    bindGlobalUi(state);
-    renderGoogleButtonIfNeeded(state);
+    bindGlobalUi();
   }
 
   function layout(route, user, languagePairs, currentPair, cards) {
@@ -66,7 +102,7 @@ export function createApp(rootElement) {
                 </label>
               ` : ""}
               <div class="auth-slot">
-                ${user ? authBadge(user) : `<div id="google-signin-button"></div>`}
+                ${user ? authBadge(user) : cloud.enabled ? '<button type="button" class="button button-secondary auth-button" id="sign-in-button">Sign in with Google</button>' : '<span class="header-note">Local mode</span>'}
               </div>
               <button type="button" class="menu-button" id="menu-toggle" aria-expanded="false" aria-controls="header-menu">
                 <span></span><span></span><span></span>
@@ -79,7 +115,7 @@ export function createApp(rootElement) {
             ${nav("#/study", "Study Mode", route.name === "study")}
             ${nav("#/settings", "Settings", route.name === "settings")}
             <a class="nav-link buttonlike" href="#/cards/new" data-route>Add Card</a>
-            ${user ? `<button type="button" class="nav-link nav-button" id="sign-out-button">Sign out from Google</button>` : ""}
+            ${user ? `<button type="button" class="nav-link nav-button" id="sign-out-button">Sign out</button>` : ""}
           </nav>
         </header>
 
@@ -110,7 +146,7 @@ export function createApp(rootElement) {
     });
   }
 
-  function bindGlobalUi(state) {
+  function bindGlobalUi() {
     const menuButton = rootElement.querySelector("#menu-toggle");
     const menu = rootElement.querySelector("#header-menu");
     if (menuButton && menu) {
@@ -123,20 +159,33 @@ export function createApp(rootElement) {
 
     const pairSwitcher = rootElement.querySelector("#pair-switcher");
     if (pairSwitcher) {
-      pairSwitcher.addEventListener("change", (event) => {
-        store.updateActivePair(event.currentTarget.value);
+      pairSwitcher.addEventListener("change", async (event) => {
+        await store.updateActivePair(event.currentTarget.value);
         render();
+      });
+    }
+
+    const signInButton = rootElement.querySelector("#sign-in-button");
+    if (signInButton) {
+      signInButton.addEventListener("click", async () => {
+        try {
+          await cloud.signInWithGoogle();
+        } catch (error) {
+          alert(error?.message || "Google sign-in could not be started.");
+        }
       });
     }
 
     const signOutButton = rootElement.querySelector("#sign-out-button");
     if (signOutButton) {
-      signOutButton.addEventListener("click", () => {
-        if (window.google?.accounts?.id) {
-          window.google.accounts.id.disableAutoSelect();
+      signOutButton.addEventListener("click", async () => {
+        try {
+          await cloud.signOut();
+          await store.updateCurrentUser(null);
+          showFlash("Signed out.");
+        } catch (error) {
+          alert(error?.message || "Sign-out failed.");
         }
-        store.updateCurrentUser(null);
-        showFlash("Switched to guest mode.");
       });
     }
   }
@@ -177,39 +226,6 @@ export function createApp(rootElement) {
   function navigateWithFlash(hash, message) {
     flashMessage = message;
     router.navigate(hash);
-  }
-
-  function renderGoogleButtonIfNeeded(state) {
-    const buttonHost = rootElement.querySelector("#google-signin-button");
-    if (!buttonHost || !state.settings.googleClientId || !window.google?.accounts?.id) {
-      return;
-    }
-
-    buttonHost.innerHTML = "";
-    window.google.accounts.id.initialize({
-      client_id: state.settings.googleClientId,
-      callback: (response) => {
-        const profile = decodeGoogleCredential(response.credential);
-        if (!profile?.sub) {
-          alert("Could not read the Google sign-in result.");
-          return;
-        }
-        store.updateCurrentUser({
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          picture: profile.picture,
-        });
-        showFlash("Signed in with your Google account.");
-      },
-    });
-    window.google.accounts.id.renderButton(buttonHost, {
-      theme: "outline",
-      size: "large",
-      shape: "pill",
-      text: "signin_with",
-      width: 220,
-    });
   }
 
   function renderView(route, state, context) {
@@ -402,7 +418,7 @@ export function createApp(rootElement) {
       syncTypeHints(event.currentTarget.form);
     });
 
-    view.querySelector("#card-form").addEventListener("submit", (event) => {
+    view.querySelector("#card-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const card = collectCardForm(event.currentTarget);
       if (!card.expression) {
@@ -410,12 +426,12 @@ export function createApp(rootElement) {
         return;
       }
       if (editingCard) {
-        store.updateCard(editingCard.id, card);
+        await store.updateCard(editingCard.id, card);
         sessionStorage.removeItem("phrase-forge:draft");
         navigateWithFlash(`#/cards/${editingCard.id}`, "Card updated.");
         return;
       }
-      const created = store.addCard(card);
+      const created = await store.addCard(card);
       sessionStorage.removeItem("phrase-forge:draft");
       navigateWithFlash(`#/cards/${created.id}`, "Card saved.");
     });
@@ -428,8 +444,8 @@ export function createApp(rootElement) {
         alert("Enter an expression first.");
         return;
       }
-      if (!state.settings.openAiApiKey) {
-        alert("Enter your OpenAI API key in Settings first.");
+      if (!appConfig.features.sharedGeneration) {
+        alert("Shared OpenAI generation is not configured on the server yet.");
         return;
       }
 
@@ -439,7 +455,6 @@ export function createApp(rootElement) {
       try {
         const pair = getPairById(context.languagePairs, partial.pairId) || context.currentPair;
         const generated = await generator.generateDraft({
-          apiKey: state.settings.openAiApiKey,
           model: state.settings.openAiModel,
           nativeLanguage: pair?.nativeLanguage || "Japanese",
           targetLanguage: pair?.targetLanguage || "English",
@@ -509,11 +524,11 @@ export function createApp(rootElement) {
       </section>
     `;
 
-    view.querySelector("#delete-card-button").addEventListener("click", () => {
+    view.querySelector("#delete-card-button").addEventListener("click", async () => {
       if (!confirm(`Delete "${card.expression}"?`)) {
         return;
       }
-      store.deleteCard(card.id);
+      await store.deleteCard(card.id);
       navigateWithFlash("#/cards", "Card deleted.");
     });
 
@@ -638,13 +653,16 @@ export function createApp(rootElement) {
             <div></div>
           </div>
           <form id="settings-form" class="form-grid">
-            ${input("googleClientId", "Google Client ID", false, "xxxx.apps.googleusercontent.com")}
             ${input("openAiModel", "OpenAI Model", true, "e.g. gpt-4.1-mini")}
             ${input("homeTagLimit", "Home Tags Limit", true, "e.g. 5", "number")}
-            <label class="field span-2">
-              <span>OpenAI API Key</span>
-              <input name="openAiApiKey" type="password" placeholder="sk-..." autocomplete="off" />
-            </label>
+            <div class="field span-2">
+              <span>Cloud Setup</span>
+              <div class="settings-note">${appConfig.features.cloudSync ? "Cards are synced with Supabase for signed-in users." : "Supabase is not configured yet. Cards stay local until SUPABASE_URL and SUPABASE_ANON_KEY are set in Vercel."}</div>
+            </div>
+            <div class="field span-2">
+              <span>Shared AI</span>
+              <div class="settings-note">${appConfig.features.sharedGeneration ? "OpenAI generation is managed server-side through Vercel environment variables." : "Shared OpenAI generation is not configured yet. Add OPENAI_API_KEY in Vercel to enable it."}</div>
+            </div>
             <div class="form-actions">
               <button type="submit" class="button button-primary">Save Settings</button>
             </div>
@@ -684,10 +702,8 @@ export function createApp(rootElement) {
       </section>
     `;
 
-    setValue(view, "googleClientId", state.settings.googleClientId);
     setValue(view, "openAiModel", state.settings.openAiModel);
     setValue(view, "homeTagLimit", String(state.settings.homeTagLimit || 5));
-    setValue(view, "openAiApiKey", state.settings.openAiApiKey);
     if (editingPair) {
       setValue(view, "pairName", editingPair.name);
       setValue(view, "nativeLanguage", editingPair.nativeLanguage);
@@ -695,8 +711,8 @@ export function createApp(rootElement) {
     }
 
     view.querySelectorAll("[data-activate-pair]").forEach((button) => {
-      button.addEventListener("click", (event) => {
-        store.updateActivePair(event.currentTarget.getAttribute("data-activate-pair"));
+      button.addEventListener("click", async (event) => {
+        await store.updateActivePair(event.currentTarget.getAttribute("data-activate-pair"));
         showFlash("Language pair switched.");
       });
     });
@@ -709,7 +725,7 @@ export function createApp(rootElement) {
     });
 
     view.querySelectorAll("[data-delete-pair]").forEach((button) => {
-      button.addEventListener("click", (event) => {
+      button.addEventListener("click", async (event) => {
         const pairId = event.currentTarget.getAttribute("data-delete-pair");
         const pair = getPairById(context.languagePairs, pairId);
         if (!pair) {
@@ -718,7 +734,7 @@ export function createApp(rootElement) {
         if (!confirm(`Delete "${pairLabel(pair)}"? Cards in this language pair will also be deleted.`)) {
           return;
         }
-        const result = store.deleteLanguagePair(pairId);
+        const result = await store.deleteLanguagePair(pairId);
         if (!result?.ok) {
           if (result?.reason === "last_pair") {
             alert("You cannot delete the last remaining language pair.");
@@ -742,7 +758,7 @@ export function createApp(rootElement) {
       });
     }
 
-    view.querySelector("#pair-form").addEventListener("submit", (event) => {
+    view.querySelector("#pair-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = new FormData(event.currentTarget);
       const input = {
@@ -752,29 +768,27 @@ export function createApp(rootElement) {
       };
       const pairId = data.get("pairId")?.toString().trim();
       if (pairId) {
-        const updated = store.updateLanguagePair(pairId, input);
+        const updated = await store.updateLanguagePair(pairId, input);
         if (!updated) {
           alert("Could not update the language pair.");
           return;
         }
-        store.updateActivePair(updated.id);
+        await store.updateActivePair(updated.id);
         sessionStorage.removeItem("phrase-forge:editing-pair");
         showFlash("Language pair updated.");
         return;
       }
-      const pair = store.addLanguagePair(input);
-      store.updateActivePair(pair.id);
+      const pair = await store.addLanguagePair(input);
+      await store.updateActivePair(pair.id);
       showFlash("Language pair added.");
     });
 
-    view.querySelector("#settings-form").addEventListener("submit", (event) => {
+    view.querySelector("#settings-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = new FormData(event.currentTarget);
-      store.updateSettings({
-        googleClientId: data.get("googleClientId")?.toString().trim(),
+      await store.updateSettings({
         openAiModel: data.get("openAiModel")?.toString().trim(),
         homeTagLimit: data.get("homeTagLimit")?.toString().trim(),
-        openAiApiKey: data.get("openAiApiKey")?.toString().trim(),
       });
       showFlash("Settings saved.");
     });
@@ -782,12 +796,12 @@ export function createApp(rootElement) {
 
   function bindConfidenceButtons(scope) {
     scope.querySelectorAll("[data-confidence-card]").forEach((button) => {
-      button.addEventListener("click", (event) => {
+      button.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
         const cardId = event.currentTarget.getAttribute("data-confidence-card");
         const level = Number(event.currentTarget.getAttribute("data-confidence-level") || 0);
-        store.updateCardConfidence(cardId, level);
+        await store.updateCardConfidence(cardId, level);
         render();
       });
     });
@@ -795,7 +809,7 @@ export function createApp(rootElement) {
 
   function bindCardDeleteButtons(scope) {
     scope.querySelectorAll("[data-delete-card]").forEach((button) => {
-      button.addEventListener("click", (event) => {
+      button.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
         const cardId = event.currentTarget.getAttribute("data-delete-card");
@@ -806,12 +820,13 @@ export function createApp(rootElement) {
         if (!confirm(`Delete "${card.expression}"?`)) {
           return;
         }
-        store.deleteCard(cardId);
+        await store.deleteCard(cardId);
         showFlash("Card deleted.");
       });
     });
   }
 
+  authReady = true;
   router.start();
 }
 
@@ -1108,7 +1123,7 @@ function renderStarButtons(cardId, value, filledOnly = false) {
   return [1, 2, 3]
     .map((level) => {
       const active = level <= Number(value || 0);
-      return `<button type="button" class="star-button ${active ? "★" : "☆"} ${filledOnly ? "is-solid" : ""}" data-confidence-card="${cardId}" data-confidence-level="${level}" aria-label="Confidence ${level}">${active ? "★" : "☆"}</button>`;
+      return `<button type="button" class="star-button ${active ? "is-active" : ""} ${filledOnly ? "is-solid" : ""}" data-confidence-card="${cardId}" data-confidence-level="${level}" aria-label="Confidence ${level}">${active ? "&#9733;" : "&#9734;"}</button>`;
     })
     .join("");
 }

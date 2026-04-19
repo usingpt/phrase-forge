@@ -125,6 +125,12 @@ button {
   display: inline-block;
 }
 
+.header-note {
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -157,6 +163,15 @@ button {
 .field textarea {
   min-height: 120px;
   resize: vertical;
+}
+
+.settings-note {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface-strong);
+  color: var(--text);
+  line-height: 1.5;
 }
 
 .field input,
@@ -193,6 +208,10 @@ button {
   padding: 8px 10px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.62);
+}
+
+.auth-button {
+  white-space: nowrap;
 }
 
 .auth-badge img {

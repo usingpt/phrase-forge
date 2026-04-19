@@ -1,24 +1,46 @@
-# Phrase Forge MVP
+# Phrase Forge
 
-ことばのニュアンスを静かに積み上げる、フラッシュカードアプリです。
+Phrase Forge is a flashcard web app for learning idioms and phrases with nuance-focused cards.
 
-## 追加したこと
+## What Changed
 
-- Google Identity Services を使った Google ログイン
-- ログインユーザーごとのローカルデータ分離
-- ヘッダーバー化とハンバーガーメニュー
-- Confidence の星を再タップしてゼロに戻す挙動
-- 一覧は例文・訳・ニュアンス中心の表示
+- Cards and language pairs can now be synced on the web with Supabase.
+- Google sign-in is handled through Supabase Auth.
+- OpenAI generation is moved to a Vercel Function, so the API key is no longer stored in the browser.
+- Local mode still works when Supabase or Vercel environment variables are not configured yet.
 
-## Google認証について
+## Architecture
 
-- 設定画面で `Google Client ID` を入力すると、Googleログインボタンが表示されます。
-- 静的アプリなので、今回はブラウザ内で受け取った Google のプロフィール情報を使って、ユーザーごとに `localStorage` の見え方を分けています。
-- サーバー側での ID トークン検証まではしていません。公開サービスにする場合はバックエンド側の検証を追加してください。
+- Frontend: static app in `src/`
+- Card storage: Supabase table `public.user_workspaces`
+- Auth: Supabase Auth with Google
+- AI generation: `api/generate.js`
+- Public runtime config: `api/config.js`
+- Supabase SQL setup: `supabase/schema.sql`
 
-## Web公開
+## Required Vercel Environment Variables
 
-- このアプリはビルド不要の静的サイトとして動きます。
-- `index.html` をそのまま配信できる環境なら公開できます。
-- `vercel.json` を追加してあるので、Vercel へそのまま配置しやすい構成です。
-- 公開時は Google Cloud Console 側で公開URLを `Authorized JavaScript origins` に追加してください。
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL` (optional, default: `gpt-4.1-mini`)
+
+## Supabase Setup
+
+1. Create a Supabase project.
+2. Enable Google login in Supabase Auth.
+3. Add your app URL to the allowed redirect URLs in Supabase Auth.
+4. Run the SQL in [supabase/schema.sql](./supabase/schema.sql).
+5. Copy `SUPABASE_URL` and `SUPABASE_ANON_KEY` into Vercel environment variables.
+
+## Vercel Setup
+
+1. Add the environment variables listed above.
+2. Redeploy the project after saving them.
+3. Open the deployed app and sign in with Google.
+
+## Local Development
+
+- Opening `index.html` through a simple static server still works.
+- Without `/api/config`, the app falls back to local-only mode.
+- Shared OpenAI generation and web sync only work on Vercel after environment variables are configured.

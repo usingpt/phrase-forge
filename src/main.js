@@ -1,3 +1,3 @@
 import { createApp } from "./app.js";
 
-createApp(document.querySelector("#app"));
+await createApp(document.querySelector("#app"));
