@@ -217,8 +217,7 @@ export async function createApp(rootElement) {
     const visibleItems = items.slice(startIndex, startIndex + pageSize);
     const allRankedTags = summarizeTopTags(context.cardsForCurrentPair, Number(context.cardsForCurrentPair.length || 999));
     const tagLimit = context.state?.settings?.homeTagLimit || 5;
-    const topTags = allRankedTags.slice(0, tagLimit);
-    const hiddenTags = allRankedTags.slice(tagLimit);
+    const { topTags, hiddenTags } = partitionHomeTags(allRankedTags, context.state?.settings?.homePinnedTags, tagLimit);
 
     view.innerHTML = `
       <section class="stack">
@@ -226,7 +225,12 @@ export async function createApp(rootElement) {
           <section class="panel">
             <div class="tag-shortcuts">
               ${topTags.map((item) => `
-                <button type="button" class="tag-shortcut-button ${homeState.tag === item.tag ? "is-active" : ""}" data-home-tag="${esc(item.tag)}">
+                <button
+                  type="button"
+                  class="tag-shortcut-button ${homeState.tag === item.tag ? "is-active" : ""}"
+                  data-home-tag="${esc(item.tag)}"
+                  data-home-tag-group="top"
+                  draggable="true">
                   ${esc(item.tag)}
                 </button>
               `).join("")}
@@ -240,7 +244,12 @@ export async function createApp(rootElement) {
             ${hiddenTags.length && homeState.showAllTags ? `
               <div class="tag-shortcuts tag-shortcuts-extra">
                 ${hiddenTags.map((item) => `
-                  <button type="button" class="tag-shortcut-button ${homeState.tag === item.tag ? "is-active" : ""}" data-home-tag="${esc(item.tag)}">
+                  <button
+                    type="button"
+                    class="tag-shortcut-button ${homeState.tag === item.tag ? "is-active" : ""}"
+                    data-home-tag="${esc(item.tag)}"
+                    data-home-tag-group="hidden"
+                    draggable="true">
                     ${esc(item.tag)}
                   </button>
                 `).join("")}
@@ -266,6 +275,10 @@ export async function createApp(rootElement) {
 
     view.querySelectorAll("[data-home-tag]").forEach((button) => {
       button.addEventListener("click", (event) => {
+        if (event.currentTarget.dataset.dragMoved === "true") {
+          event.currentTarget.dataset.dragMoved = "false";
+          return;
+        }
         const nextTag = event.currentTarget.getAttribute("data-home-tag") || "";
         writeHomeViewState({
           tag: homeState.tag === nextTag ? "" : nextTag,
@@ -274,6 +287,22 @@ export async function createApp(rootElement) {
         });
         render();
       });
+    });
+
+    bindHomeTagDragAndDrop({
+      view,
+      topTags,
+      hiddenTags,
+      tagLimit,
+      homeState,
+      savedPinnedTags: context.state?.settings?.homePinnedTags || [],
+      onSwap: async (nextPinnedTags) => {
+        await store.updateSettings({
+          ...context.state.settings,
+          homePinnedTags: nextPinnedTags,
+        });
+        render();
+      },
     });
 
     bindConfidenceButtons(view);
@@ -1391,6 +1420,100 @@ function summarizeTopTags(cards, limit) {
     })
     .slice(0, limit)
     .map(([tag, count]) => ({ tag, count }));
+}
+
+function partitionHomeTags(allRankedTags, savedPinnedTags, limit) {
+  const rankedNames = allRankedTags.map((item) => item.tag);
+  const resolvedPinnedTags = resolvePinnedHomeTags(savedPinnedTags, rankedNames, limit);
+  const topSet = new Set(resolvedPinnedTags);
+  const lookup = new Map(allRankedTags.map((item) => [item.tag, item]));
+  return {
+    topTags: resolvedPinnedTags.map((tag) => lookup.get(tag)).filter(Boolean),
+    hiddenTags: allRankedTags.filter((item) => !topSet.has(item.tag)),
+  };
+}
+
+function resolvePinnedHomeTags(savedPinnedTags, rankedNames, limit) {
+  const normalizedSaved = split(savedPinnedTags || []).filter((tag) => rankedNames.includes(tag));
+  const uniqueSaved = normalizedSaved.filter((tag, index) => normalizedSaved.indexOf(tag) === index);
+  const rankedFallback = rankedNames.filter((tag) => !uniqueSaved.includes(tag));
+  return [...uniqueSaved, ...rankedFallback].slice(0, limit);
+}
+
+function swapPinnedHomeTag(savedPinnedTags, rankedNames, limit, draggedTag, targetTag, targetGroup) {
+  const currentPinnedTags = resolvePinnedHomeTags(savedPinnedTags, rankedNames, limit);
+  const draggedInPinned = currentPinnedTags.includes(draggedTag);
+  const targetInPinned = currentPinnedTags.includes(targetTag);
+  const nextPinnedTags = [...currentPinnedTags];
+
+  if (!draggedTag || !targetTag || draggedTag === targetTag) {
+    return nextPinnedTags;
+  }
+
+  if (draggedInPinned && targetInPinned) {
+    const draggedIndex = nextPinnedTags.indexOf(draggedTag);
+    const targetIndex = nextPinnedTags.indexOf(targetTag);
+    [nextPinnedTags[draggedIndex], nextPinnedTags[targetIndex]] = [nextPinnedTags[targetIndex], nextPinnedTags[draggedIndex]];
+    return nextPinnedTags;
+  }
+
+  if (!draggedInPinned && targetInPinned) {
+    const targetIndex = nextPinnedTags.indexOf(targetTag);
+    nextPinnedTags[targetIndex] = draggedTag;
+    return nextPinnedTags;
+  }
+
+  if (draggedInPinned && !targetInPinned && targetGroup === "hidden") {
+    const draggedIndex = nextPinnedTags.indexOf(draggedTag);
+    nextPinnedTags[draggedIndex] = targetTag;
+  }
+
+  return nextPinnedTags;
+}
+
+function bindHomeTagDragAndDrop({ view, topTags, hiddenTags, tagLimit, homeState, savedPinnedTags, onSwap }) {
+  const rankedNames = [...topTags, ...hiddenTags].map((item) => item.tag);
+  let draggedTag = "";
+
+  view.querySelectorAll("[data-home-tag][draggable='true']").forEach((button) => {
+    button.addEventListener("dragstart", (event) => {
+      draggedTag = event.currentTarget.getAttribute("data-home-tag") || "";
+      event.currentTarget.classList.add("is-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draggedTag);
+    });
+
+    button.addEventListener("dragend", (event) => {
+      event.currentTarget.classList.remove("is-dragging");
+      window.setTimeout(() => {
+        event.currentTarget.dataset.dragMoved = "false";
+      }, 0);
+      view.querySelectorAll(".tag-shortcut-button.is-drop-target").forEach((item) => item.classList.remove("is-drop-target"));
+      draggedTag = "";
+    });
+
+    button.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      event.currentTarget.classList.add("is-drop-target");
+    });
+
+    button.addEventListener("dragleave", (event) => {
+      event.currentTarget.classList.remove("is-drop-target");
+    });
+
+    button.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      event.currentTarget.classList.remove("is-drop-target");
+      const targetTag = event.currentTarget.getAttribute("data-home-tag") || "";
+      const targetGroup = event.currentTarget.getAttribute("data-home-tag-group") || "";
+      const nextPinnedTags = swapPinnedHomeTag(savedPinnedTags, rankedNames, tagLimit, draggedTag, targetTag, targetGroup);
+      if (JSON.stringify(nextPinnedTags) === JSON.stringify(resolvePinnedHomeTags(savedPinnedTags, rankedNames, tagLimit))) {
+        return;
+      }
+      event.currentTarget.dataset.dragMoved = "true";
+      await onSwap(nextPinnedTags);
+    });
+  });
 }
 
 function renderHighlightedExample(card, textOverride = null) {

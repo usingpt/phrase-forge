@@ -213,6 +213,7 @@ export function createStore({ storage = createStorage(), defaultOpenAiModel = "g
         ...state.settings,
         openAiModel: input.openAiModel || state.settings.openAiModel,
         homeTagLimit: clampHomeTagLimit(input.homeTagLimit ?? state.settings.homeTagLimit),
+        homePinnedTags: normalizePinnedTags(input.homePinnedTags ?? state.settings.homePinnedTags),
         homeExamplesPerPage: clampHomeExamplesPerPage(input.homeExamplesPerPage ?? state.settings.homeExamplesPerPage),
         cardsPerPage: clampCardsPerPage(input.cardsPerPage ?? state.settings.cardsPerPage),
         updatedAt: new Date().toISOString(),
@@ -263,6 +264,7 @@ function normalizeState(input, defaultOpenAiModel) {
       activePairId: input.settings?.activePairId || languagePairs[0].id,
       openAiModel: input.settings?.openAiModel || defaultOpenAiModel,
       homeTagLimit: clampHomeTagLimit(input.settings?.homeTagLimit || 5),
+      homePinnedTags: normalizePinnedTags(input.settings?.homePinnedTags),
       homeExamplesPerPage: clampHomeExamplesPerPage(input.settings?.homeExamplesPerPage || 8),
       cardsPerPage: clampCardsPerPage(input.settings?.cardsPerPage || 12),
       currentUser: normalizeCurrentUser(input.settings?.currentUser),
@@ -376,6 +378,10 @@ function normalizeTags(value) {
     .filter((item, index, list) => list.findIndex((candidate) => candidate.toLowerCase() === item.toLowerCase()) === index);
 }
 
+function normalizePinnedTags(value) {
+  return normalizeTags(Array.isArray(value) ? value : []);
+}
+
 function clampConfidence(value) {
   const numeric = Number(value || 0);
   if (Number.isNaN(numeric) || numeric < 0) {
@@ -445,6 +451,7 @@ function workspaceFromState(state, ownerId) {
       activePairId: state.settings.activePairId,
       openAiModel: state.settings.openAiModel,
       homeTagLimit: state.settings.homeTagLimit,
+      homePinnedTags: state.settings.homePinnedTags,
       homeExamplesPerPage: state.settings.homeExamplesPerPage,
       cardsPerPage: state.settings.cardsPerPage,
     },
@@ -471,6 +478,7 @@ function applyWorkspace(state, ownerId, workspace, defaultOpenAiModel) {
       activePairId: workspace.settings?.activePairId || nextPairs[0]?.id || state.settings.activePairId,
       openAiModel: workspace.settings?.openAiModel || state.settings.openAiModel || defaultOpenAiModel,
       homeTagLimit: clampHomeTagLimit(workspace.settings?.homeTagLimit || state.settings.homeTagLimit),
+      homePinnedTags: normalizePinnedTags(workspace.settings?.homePinnedTags || state.settings.homePinnedTags),
       homeExamplesPerPage: clampHomeExamplesPerPage(workspace.settings?.homeExamplesPerPage || state.settings.homeExamplesPerPage),
       cardsPerPage: clampCardsPerPage(workspace.settings?.cardsPerPage || state.settings.cardsPerPage),
     },
