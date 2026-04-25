@@ -215,7 +215,10 @@ export async function createApp(rootElement) {
     const currentPage = Math.min(homeState.page, totalPages);
     const startIndex = (currentPage - 1) * pageSize;
     const visibleItems = items.slice(startIndex, startIndex + pageSize);
-    const topTags = summarizeTopTags(context.cardsForCurrentPair, context.state?.settings?.homeTagLimit || 5);
+    const allRankedTags = summarizeTopTags(context.cardsForCurrentPair, Number(context.cardsForCurrentPair.length || 999));
+    const tagLimit = context.state?.settings?.homeTagLimit || 5;
+    const topTags = allRankedTags.slice(0, tagLimit);
+    const hiddenTags = allRankedTags.slice(tagLimit);
 
     view.innerHTML = `
       <section class="stack">
@@ -227,8 +230,22 @@ export async function createApp(rootElement) {
                   ${esc(item.tag)}
                 </button>
               `).join("")}
+              ${hiddenTags.length ? `
+                <button type="button" class="tag-shortcut-button ${homeState.showAllTags ? "is-active" : ""}" id="toggle-home-tags">
+                  Others
+                </button>
+              ` : ""}
               ${homeState.tag ? `<button type="button" class="tag-shortcut-button" data-home-clear="true">All</button>` : ""}
             </div>
+            ${hiddenTags.length && homeState.showAllTags ? `
+              <div class="tag-shortcuts tag-shortcuts-extra">
+                ${hiddenTags.map((item) => `
+                  <button type="button" class="tag-shortcut-button ${homeState.tag === item.tag ? "is-active" : ""}" data-home-tag="${esc(item.tag)}">
+                    ${esc(item.tag)}
+                  </button>
+                `).join("")}
+              </div>
+            ` : ""}
           </section>
         ` : ""}
 
@@ -253,15 +270,30 @@ export async function createApp(rootElement) {
         writeHomeViewState({
           tag: homeState.tag === nextTag ? "" : nextTag,
           page: 1,
+          showAllTags: homeState.showAllTags,
         });
         render();
       });
     });
 
+    bindConfidenceButtons(view);
+
+    const toggleTagsButton = view.querySelector("#toggle-home-tags");
+    if (toggleTagsButton) {
+      toggleTagsButton.addEventListener("click", () => {
+        writeHomeViewState({
+          tag: homeState.tag,
+          page: homeState.page,
+          showAllTags: !homeState.showAllTags,
+        });
+        render();
+      });
+    }
+
     const clearButton = view.querySelector("[data-home-clear]");
     if (clearButton) {
       clearButton.addEventListener("click", () => {
-        writeHomeViewState({ tag: "", page: 1 });
+        writeHomeViewState({ tag: "", page: 1, showAllTags: homeState.showAllTags });
         render();
       });
     }
@@ -271,14 +303,14 @@ export async function createApp(rootElement) {
     if (prevButton) {
       prevButton.disabled = currentPage <= 1;
       prevButton.addEventListener("click", () => {
-        writeHomeViewState({ tag: homeState.tag, page: Math.max(1, currentPage - 1) });
+        writeHomeViewState({ tag: homeState.tag, page: Math.max(1, currentPage - 1), showAllTags: homeState.showAllTags });
         render();
       });
     }
     if (nextButton) {
       nextButton.disabled = currentPage >= totalPages;
       nextButton.addEventListener("click", () => {
-        writeHomeViewState({ tag: homeState.tag, page: Math.min(totalPages, currentPage + 1) });
+        writeHomeViewState({ tag: homeState.tag, page: Math.min(totalPages, currentPage + 1), showAllTags: homeState.showAllTags });
         render();
       });
     }
@@ -449,15 +481,17 @@ export async function createApp(rootElement) {
           ${textarea("exampleTranslation", "Example Translation", "For idioms")}
           ${textarea("nuance", "Nuance", "For idioms / optional note for phrases")}
           ${textarea("notes", "Notes / Origin", "For phrases")}
-          <label class="field">
-            <span>Confidence</span>
-            <select name="confidence">
-              <option value="0">Unrated</option>
-              <option value="1">Star 1</option>
-              <option value="2">Star 2</option>
-              <option value="3">Star 3</option>
-            </select>
-          </label>
+          ${editingCard ? `
+            <label class="field">
+              <span>Confidence</span>
+              <select name="confidence">
+                <option value="0">Unrated</option>
+                <option value="1">Star 1</option>
+                <option value="2">Star 2</option>
+                <option value="3">Star 3</option>
+              </select>
+            </label>
+          ` : ""}
         </form>
       </section>
     `;
@@ -1004,7 +1038,10 @@ function homeCardRow(card) {
         <div class="home-example-text">${renderHighlightedExample(card, example)}</div>
         <p>${esc(exampleTranslation)}</p>
       </div>
-      ${iconLink({ href: `#/cards/${card.id}`, label: "View card details", icon: "open", className: "button button-secondary icon-button" })}
+      <div class="row-actions">
+        <div class="star-group compact">${renderStarButtons(card.id, card.confidence, true)}</div>
+        ${iconLink({ href: `#/cards/${card.id}`, label: "View card details", icon: "open", className: "button button-secondary icon-button" })}
+      </div>
     </article>
   `;
 }
@@ -1211,12 +1248,14 @@ function readHomeViewState() {
     return {
       tag: parsed.tag || "",
       page: clampPageNumber(Number(parsed.page || 1)),
+      showAllTags: parsed.showAllTags === true,
     };
   } catch (error) {
     console.error("Failed to read home view state.", error);
     return {
       tag: "",
       page: 1,
+      showAllTags: false,
     };
   }
 }
@@ -1226,6 +1265,7 @@ function writeHomeViewState(viewState) {
     sessionStorage.setItem("phrase-forge:home-view", JSON.stringify({
       tag: viewState.tag || "",
       page: clampPageNumber(Number(viewState.page || 1)),
+      showAllTags: viewState.showAllTags === true,
     }));
   } catch (error) {
     console.error("Failed to save home view state.", error);

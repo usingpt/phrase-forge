@@ -334,6 +334,10 @@ button {
   flex-wrap: wrap;
 }
 
+.tag-shortcuts-extra {
+  margin-top: 10px;
+}
+
 .tag-shortcut-button {
   min-height: 38px;
   padding: 0 14px;
