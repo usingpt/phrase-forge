@@ -428,6 +428,7 @@ export async function createApp(rootElement) {
           </div>
         </div>
         <form id="card-form" class="form-grid">
+          <input type="hidden" name="exampleHighlightRanges" value="[]" />
           <label class="field">
             <span>Language Pair *</span>
             <select name="pairId" required>
@@ -469,14 +470,23 @@ export async function createApp(rootElement) {
       fillCardForm(view, createEmptyCard(context.currentPair?.id));
     }
 
-    syncTypeHints(view.querySelector("#card-form"));
-    view.querySelector('[name="type"]').addEventListener("change", (event) => {
+    const cardForm = view.querySelector("#card-form");
+    syncTypeHints(cardForm);
+    cardForm.querySelector('[name="type"]').addEventListener("change", (event) => {
       syncTypeHints(event.currentTarget.form);
     });
+    bindExampleHighlightField(cardForm);
 
-    view.querySelector("#card-form").addEventListener("submit", async (event) => {
+    cardForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const card = collectCardForm(event.currentTarget);
+      const exampleChanged = !!editingCard && card.example !== editingCard.example;
+      if (editingCard && !exampleChanged) {
+        card.exampleHighlightRanges = editingCard.exampleHighlightRanges || [];
+      }
+      if (exampleChanged) {
+        card.exampleHighlightRanges = [];
+      }
       if (!card.expression) {
         alert("Expression is required.");
         return;
@@ -494,7 +504,7 @@ export async function createApp(rootElement) {
 
     view.querySelector("#generate-button-top").addEventListener("click", async (event) => {
       const button = event.currentTarget;
-      const form = view.querySelector("#card-form");
+      const form = cardForm;
       const partial = collectCardForm(form);
       if (!partial.expression) {
         alert("Enter an expression first.");
@@ -575,7 +585,7 @@ export async function createApp(rootElement) {
           </section>
           <section class="panel">
             <h3>Example</h3>
-            ${richDefinition("Example", highlightExpression(card.example, card.expression, card.type))}
+            ${richDefinition("Example", renderHighlightedExample(card))}
             ${definition("Example Translation", card.exampleTranslation)}
             ${definition("Tags", card.tags.join(", "))}
             ${definition("Updated", formatDateTime(card.updatedAt))}
@@ -642,7 +652,7 @@ export async function createApp(rootElement) {
           </div>
           <div class="study-front">
             <p class="study-expression">${esc(card.expression)}</p>
-            <div class="study-example">${highlightExpression(card.example || card.expression, card.expression, card.type)}</div>
+            <div class="study-example">${renderHighlightedExample(card, card.example || card.expression)}</div>
           </div>
           <div class="study-back ${revealed ? "is-visible" : ""}">
             <dl class="study-definition">
@@ -991,7 +1001,7 @@ function homeCardRow(card) {
     <article class="person-row">
       <div>
         <span class="preview-label">${esc(card.expression)}</span>
-        <div class="home-example-text">${card.type === "idiom" ? highlightExpression(example, card.expression, card.type) : esc(example)}</div>
+        <div class="home-example-text">${renderHighlightedExample(card, example)}</div>
         <p>${esc(exampleTranslation)}</p>
       </div>
       ${iconLink({ href: `#/cards/${card.id}`, label: "View card details", icon: "open", className: "button button-secondary icon-button" })}
@@ -1012,7 +1022,7 @@ function cardPreview(card) {
       ${card.type === "idiom" ? `
         <div class="preview-block">
           <span class="preview-label">Example</span>
-          <div class="preview-value">${highlightExpression(card.example || "Not entered", card.expression, card.type)}</div>
+          <div class="preview-value">${renderHighlightedExample(card, card.example || "Not entered")}</div>
         </div>
       ` : ""}
       <div class="preview-block">
@@ -1239,6 +1249,7 @@ function createEmptyCard(pairId) {
     meaning: "",
     example: "",
     exampleTranslation: "",
+    exampleHighlightRanges: [],
     nuance: "",
     notes: "",
     tags: [],
@@ -1254,6 +1265,7 @@ function fillCardForm(view, card) {
   setValue(view, "meaning", card.meaning);
   setValue(view, "example", card.example);
   setValue(view, "exampleTranslation", card.exampleTranslation);
+  setValue(view, "exampleHighlightRanges", JSON.stringify(normalizeStoredHighlightRanges(card.exampleHighlightRanges, card.example)));
   setValue(view, "nuance", card.nuance);
   setValue(view, "notes", card.notes);
   setValue(view, "tags", (card.tags || []).join(", "));
@@ -1262,14 +1274,16 @@ function fillCardForm(view, card) {
 
 function collectCardForm(form) {
   const data = new FormData(form);
+  const example = data.get("example")?.toString().trim() || "";
   return {
     pairId: data.get("pairId")?.toString() || "",
     type: data.get("type")?.toString() || "idiom",
     expression: data.get("expression")?.toString().trim(),
     translation: data.get("translation")?.toString().trim(),
     meaning: data.get("meaning")?.toString().trim(),
-    example: data.get("example")?.toString().trim(),
+    example,
     exampleTranslation: data.get("exampleTranslation")?.toString().trim(),
+    exampleHighlightRanges: normalizeStoredHighlightRanges(readHighlightRangesField(data.get("exampleHighlightRanges")), example),
     nuance: data.get("nuance")?.toString().trim(),
     notes: data.get("notes")?.toString().trim(),
     tags: split(data.get("tags")),
@@ -1310,6 +1324,17 @@ function mergeTags(left, right) {
   return [...new Set([...(left || []), ...(right || [])])];
 }
 
+function bindExampleHighlightField(form) {
+  const exampleField = form.querySelector('[name="example"]');
+  const rangesField = form.querySelector('[name="exampleHighlightRanges"]');
+  if (!exampleField || !rangesField) {
+    return;
+  }
+  exampleField.addEventListener("input", () => {
+    rangesField.value = "[]";
+  });
+}
+
 function summarizeTopTags(cards, limit) {
   const counts = new Map();
   cards.forEach((card) => {
@@ -1326,6 +1351,54 @@ function summarizeTopTags(cards, limit) {
     })
     .slice(0, limit)
     .map(([tag, count]) => ({ tag, count }));
+}
+
+function renderHighlightedExample(card, textOverride = null) {
+  const text = textOverride ?? card.example ?? "";
+  const ranges = normalizeStoredHighlightRanges(card.exampleHighlightRanges, text);
+  if (ranges.length) {
+    return highlightTextWithRanges(text, ranges);
+  }
+  return highlightExpression(text, card.expression, card.type);
+}
+
+function highlightTextWithRanges(text, ranges) {
+  if (!text) {
+    return "";
+  }
+  const merged = mergeRanges(ranges.map((range) => [range.start, range.end]));
+  let cursor = 0;
+  let output = "";
+  merged.forEach(([start, end]) => {
+    output += esc(text.slice(cursor, start));
+    output += `<strong>${esc(text.slice(start, end))}</strong>`;
+    cursor = end;
+  });
+  output += esc(text.slice(cursor));
+  return output;
+}
+
+function readHighlightRangesField(value) {
+  try {
+    const parsed = JSON.parse(value?.toString() || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error("Failed to parse example highlight ranges.", error);
+    return [];
+  }
+}
+
+function normalizeStoredHighlightRanges(ranges, text) {
+  const maxLength = (text || "").length;
+  const rawItems = Array.isArray(ranges) ? ranges : [];
+  return rawItems
+    .map((range) => ({
+      start: Number(range?.start),
+      end: Number(range?.end),
+    }))
+    .filter((range) => Number.isInteger(range.start) && Number.isInteger(range.end))
+    .filter((range) => range.start >= 0 && range.end > range.start && range.end <= maxLength)
+    .sort((left, right) => left.start - right.start);
 }
 
 function highlightExpression(text, expression, type) {

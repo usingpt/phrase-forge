@@ -34,6 +34,7 @@ export function createFlashcardGenerationService() {
         meaning: parsed.meaning || "",
         example: parsed.example || "",
         exampleTranslation: parsed.exampleTranslation || "",
+        exampleHighlightRanges: normalizeHighlightRanges(parsed.exampleHighlightRanges, parsed.example || ""),
         nuance: parsed.nuance || "",
         notes: parsed.notes || "",
         tags: normalizeTags(parsed.tags),
@@ -55,6 +56,19 @@ function normalizeTags(value) {
     .map((item) => item?.toString().trim())
     .filter(Boolean)
     .filter((item, index, list) => list.findIndex((candidate) => candidate.toLowerCase() === item.toLowerCase()) === index);
+}
+
+function normalizeHighlightRanges(value, text) {
+  const maxLength = (text || "").length;
+  const rawItems = Array.isArray(value) ? value : [];
+  return rawItems
+    .map((item) => ({
+      start: Number(item?.start),
+      end: Number(item?.end),
+    }))
+    .filter((item) => Number.isInteger(item.start) && Number.isInteger(item.end))
+    .filter((item) => item.start >= 0 && item.end > item.start && item.end <= maxLength)
+    .sort((left, right) => left.start - right.start);
 }
 
 function extractStructuredText(payload) {

@@ -28,6 +28,18 @@ module.exports = async function handler(request, response) {
       meaning: { type: "string" },
       example: { type: "string" },
       exampleTranslation: { type: "string" },
+      exampleHighlightRanges: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            start: { type: "integer", minimum: 0 },
+            end: { type: "integer", minimum: 0 },
+          },
+          required: ["start", "end"],
+        },
+      },
       nuance: { type: "string" },
       notes: { type: "string" },
       tags: {
@@ -35,7 +47,7 @@ module.exports = async function handler(request, response) {
         items: { type: "string" },
       },
     },
-    required: ["type", "expression", "translation", "meaning", "example", "exampleTranslation", "nuance", "notes", "tags"],
+    required: ["type", "expression", "translation", "meaning", "example", "exampleTranslation", "exampleHighlightRanges", "nuance", "notes", "tags"],
   };
 
   const instructions = [
@@ -45,6 +57,9 @@ module.exports = async function handler(request, response) {
     "Keep explanations, translations, nuance, and notes in the native language.",
     "If the card type is idiom: fill meaning, example, exampleTranslation, nuance, and tags. Translation may be blank.",
     "If the card type is phrase: fill translation, notes, and tags. Meaning/example/exampleTranslation/nuance may be blank when not needed.",
+    "For idioms, exampleHighlightRanges must contain the exact character index ranges in example that should be highlighted as the idiom as it appears in the sentence.",
+    "For phrases, or when no highlight is needed, return an empty exampleHighlightRanges array.",
+    "Each range uses zero-based indexes with start inclusive and end exclusive, and must match the final example text exactly.",
     "Use 2 to 5 short tags helpful for review.",
     "Do not include markdown.",
   ].join("\n");

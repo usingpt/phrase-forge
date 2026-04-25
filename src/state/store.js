@@ -306,6 +306,7 @@ function normalizeCard(card, fallbackPairId) {
     meaning: card.meaning || "",
     example: card.example || "",
     exampleTranslation: card.exampleTranslation || "",
+    exampleHighlightRanges: normalizeHighlightRanges(card.exampleHighlightRanges, card.example || ""),
     nuance: card.nuance || "",
     notes: card.notes || "",
     tags: normalizeTags(card.tags),
@@ -325,6 +326,7 @@ function normalizeCardInput(input) {
     meaning: input.meaning?.toString().trim() || "",
     example: input.example?.toString().trim() || "",
     exampleTranslation: input.exampleTranslation?.toString().trim() || "",
+    exampleHighlightRanges: normalizeHighlightRanges(input.exampleHighlightRanges, input.example?.toString().trim() || ""),
     nuance: input.nuance?.toString().trim() || "",
     notes: input.notes?.toString().trim() || "",
     tags: normalizeTags(input.tags),
@@ -383,6 +385,19 @@ function clampConfidence(value) {
     return 3;
   }
   return Math.round(numeric);
+}
+
+function normalizeHighlightRanges(value, text) {
+  const maxLength = (text || "").length;
+  const rawItems = Array.isArray(value) ? value : [];
+  return rawItems
+    .map((item) => ({
+      start: Number(item?.start),
+      end: Number(item?.end),
+    }))
+    .filter((item) => Number.isInteger(item.start) && Number.isInteger(item.end))
+    .filter((item) => item.start >= 0 && item.end > item.start && item.end <= maxLength)
+    .sort((left, right) => left.start - right.start);
 }
 
 function clampHomeTagLimit(value) {
