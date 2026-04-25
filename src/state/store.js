@@ -213,6 +213,7 @@ export function createStore({ storage = createStorage(), defaultOpenAiModel = "g
         ...state.settings,
         openAiModel: input.openAiModel || state.settings.openAiModel,
         homeTagLimit: clampHomeTagLimit(input.homeTagLimit ?? state.settings.homeTagLimit),
+        homeExamplesPerPage: clampHomeExamplesPerPage(input.homeExamplesPerPage ?? state.settings.homeExamplesPerPage),
         cardsPerPage: clampCardsPerPage(input.cardsPerPage ?? state.settings.cardsPerPage),
         updatedAt: new Date().toISOString(),
       },
@@ -262,6 +263,7 @@ function normalizeState(input, defaultOpenAiModel) {
       activePairId: input.settings?.activePairId || languagePairs[0].id,
       openAiModel: input.settings?.openAiModel || defaultOpenAiModel,
       homeTagLimit: clampHomeTagLimit(input.settings?.homeTagLimit || 5),
+      homeExamplesPerPage: clampHomeExamplesPerPage(input.settings?.homeExamplesPerPage || 8),
       cardsPerPage: clampCardsPerPage(input.settings?.cardsPerPage || 12),
       currentUser: normalizeCurrentUser(input.settings?.currentUser),
       updatedAt: input.settings?.updatedAt || "",
@@ -405,6 +407,17 @@ function clampCardsPerPage(value) {
   return Math.round(numeric);
 }
 
+function clampHomeExamplesPerPage(value) {
+  const numeric = Number(value || 8);
+  if (Number.isNaN(numeric) || numeric < 4) {
+    return 8;
+  }
+  if (numeric > 48) {
+    return 48;
+  }
+  return Math.round(numeric);
+}
+
 function workspaceFromState(state, ownerId) {
   return {
     languagePairs: state.languagePairs
@@ -417,6 +430,7 @@ function workspaceFromState(state, ownerId) {
       activePairId: state.settings.activePairId,
       openAiModel: state.settings.openAiModel,
       homeTagLimit: state.settings.homeTagLimit,
+      homeExamplesPerPage: state.settings.homeExamplesPerPage,
       cardsPerPage: state.settings.cardsPerPage,
     },
   };
@@ -442,6 +456,7 @@ function applyWorkspace(state, ownerId, workspace, defaultOpenAiModel) {
       activePairId: workspace.settings?.activePairId || nextPairs[0]?.id || state.settings.activePairId,
       openAiModel: workspace.settings?.openAiModel || state.settings.openAiModel || defaultOpenAiModel,
       homeTagLimit: clampHomeTagLimit(workspace.settings?.homeTagLimit || state.settings.homeTagLimit),
+      homeExamplesPerPage: clampHomeExamplesPerPage(workspace.settings?.homeExamplesPerPage || state.settings.homeExamplesPerPage),
       cardsPerPage: clampCardsPerPage(workspace.settings?.cardsPerPage || state.settings.cardsPerPage),
     },
   };

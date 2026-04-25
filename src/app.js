@@ -202,7 +202,19 @@ export async function createApp(rootElement) {
   }
 
   function renderHome(view, context) {
-    const latestCards = cardsForPair(context.cards, context.currentPair?.id).slice(0, 4);
+    const homeState = readHomeViewState();
+    const pageSize = Math.max(1, Number(context.state.settings.homeExamplesPerPage || 8));
+    const items = filterCards(context.cards, {
+      query: "",
+      type: "",
+      tag: homeState.tag,
+      confidence: "",
+      pairId: context.currentPair?.id || "",
+    });
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    const currentPage = Math.min(homeState.page, totalPages);
+    const startIndex = (currentPage - 1) * pageSize;
+    const visibleItems = items.slice(startIndex, startIndex + pageSize);
     const topTags = summarizeTopTags(context.cardsForCurrentPair, context.state?.settings?.homeTagLimit || 5);
 
     view.innerHTML = `
@@ -210,30 +222,66 @@ export async function createApp(rootElement) {
         ${topTags.length ? `
           <section class="panel">
             <div class="tag-shortcuts">
-              ${topTags.map((item) => `<button type="button" class="tag-shortcut-button" data-home-tag="${esc(item.tag)}">${esc(item.tag)}</button>`).join("")}
+              ${topTags.map((item) => `
+                <button type="button" class="tag-shortcut-button ${homeState.tag === item.tag ? "is-active" : ""}" data-home-tag="${esc(item.tag)}">
+                  ${esc(item.tag)}
+                </button>
+              `).join("")}
+              ${homeState.tag ? `<button type="button" class="tag-shortcut-button" data-home-clear="true">All</button>` : ""}
             </div>
           </section>
         ` : ""}
 
         <section class="panel">
           <div class="list-stack">
-            ${latestCards.length ? latestCards.map(homeCardRow).join("") : `<div class="empty-state">No cards yet. Add a card from the menu to get started.</div>`}
+            ${visibleItems.length ? visibleItems.map(homeCardRow).join("") : `<div class="empty-state">No examples match the current tag yet.</div>`}
           </div>
+          ${items.length > pageSize ? `
+            <div class="pagination-bar">
+              ${iconButton({ id: "home-prev-page", label: "Previous page", icon: "prev", className: "button button-secondary icon-button" })}
+              <span class="pagination-status">${currentPage} / ${totalPages}</span>
+              ${iconButton({ id: "home-next-page", label: "Next page", icon: "next", className: "button button-secondary icon-button" })}
+            </div>
+          ` : ""}
         </section>
       </section>
     `;
 
     view.querySelectorAll("[data-home-tag]").forEach((button) => {
       button.addEventListener("click", (event) => {
-        writeCardsFilterState({
-          query: "",
-          type: "",
-          tag: event.currentTarget.getAttribute("data-home-tag") || "",
-          confidence: "",
+        const nextTag = event.currentTarget.getAttribute("data-home-tag") || "";
+        writeHomeViewState({
+          tag: homeState.tag === nextTag ? "" : nextTag,
+          page: 1,
         });
-        router.navigate("#/cards");
+        render();
       });
     });
+
+    const clearButton = view.querySelector("[data-home-clear]");
+    if (clearButton) {
+      clearButton.addEventListener("click", () => {
+        writeHomeViewState({ tag: "", page: 1 });
+        render();
+      });
+    }
+
+    const prevButton = view.querySelector("#home-prev-page");
+    const nextButton = view.querySelector("#home-next-page");
+    if (prevButton) {
+      prevButton.disabled = currentPage <= 1;
+      prevButton.addEventListener("click", () => {
+        writeHomeViewState({ tag: homeState.tag, page: Math.max(1, currentPage - 1) });
+        render();
+      });
+    }
+    if (nextButton) {
+      nextButton.disabled = currentPage >= totalPages;
+      nextButton.addEventListener("click", () => {
+        writeHomeViewState({ tag: homeState.tag, page: Math.min(totalPages, currentPage + 1) });
+        render();
+      });
+    }
   }
 
   function renderCards(view, context) {
@@ -673,6 +721,7 @@ export async function createApp(rootElement) {
               </select>
             </label>
             ${input("homeTagLimit", "Home Tags Limit", true, "e.g. 5", "number")}
+            ${input("homeExamplesPerPage", "Home Examples Per Page", true, "e.g. 8", "number")}
             ${input("cardsPerPage", "Cards Per Page", true, "e.g. 12", "number")}
             <div class="form-actions">
               ${iconButton({ type: "submit", label: "Save settings", icon: "save", className: "button button-primary icon-button" })}
@@ -715,6 +764,7 @@ export async function createApp(rootElement) {
 
     setValue(view, "openAiModel", state.settings.openAiModel);
     setValue(view, "homeTagLimit", String(state.settings.homeTagLimit || 5));
+    setValue(view, "homeExamplesPerPage", String(state.settings.homeExamplesPerPage || 8));
     setValue(view, "cardsPerPage", String(state.settings.cardsPerPage || 12));
     if (editingPair) {
       setValue(view, "pairName", editingPair.name);
@@ -801,6 +851,7 @@ export async function createApp(rootElement) {
       await store.updateSettings({
         openAiModel: data.get("openAiModel")?.toString().trim(),
         homeTagLimit: data.get("homeTagLimit")?.toString().trim(),
+        homeExamplesPerPage: data.get("homeExamplesPerPage")?.toString().trim(),
         cardsPerPage: data.get("cardsPerPage")?.toString().trim(),
       });
       showFlash("Settings saved.");
@@ -934,11 +985,14 @@ function renderPageFooter(route) {
 }
 
 function homeCardRow(card) {
+  const example = card.example || card.expression || "No example";
+  const exampleTranslation = card.exampleTranslation || card.translation || card.meaning || "No translation";
   return `
     <article class="person-row">
       <div>
-        <strong>${esc(card.expression)}</strong>
-        <p>${esc(card.translation || card.meaning || "No translation")}</p>
+        <span class="preview-label">${esc(card.expression)}</span>
+        <div class="home-example-text">${card.type === "idiom" ? highlightExpression(example, card.expression, card.type) : esc(example)}</div>
+        <p>${esc(exampleTranslation)}</p>
       </div>
       ${iconLink({ href: `#/cards/${card.id}`, label: "View card details", icon: "open", className: "button button-secondary icon-button" })}
     </article>
@@ -1137,6 +1191,34 @@ function writeCardsFilterState(filters) {
     sessionStorage.setItem("phrase-forge:cards-filters", JSON.stringify(filters));
   } catch (error) {
     console.error("Failed to save cards filter state.", error);
+  }
+}
+
+function readHomeViewState() {
+  try {
+    const raw = sessionStorage.getItem("phrase-forge:home-view");
+    const parsed = raw ? JSON.parse(raw) : {};
+    return {
+      tag: parsed.tag || "",
+      page: clampPageNumber(Number(parsed.page || 1)),
+    };
+  } catch (error) {
+    console.error("Failed to read home view state.", error);
+    return {
+      tag: "",
+      page: 1,
+    };
+  }
+}
+
+function writeHomeViewState(viewState) {
+  try {
+    sessionStorage.setItem("phrase-forge:home-view", JSON.stringify({
+      tag: viewState.tag || "",
+      page: clampPageNumber(Number(viewState.page || 1)),
+    }));
+  } catch (error) {
+    console.error("Failed to save home view state.", error);
   }
 }
 
