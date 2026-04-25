@@ -1495,6 +1495,7 @@ function buildExpandedVerbFamilyPattern(word) {
     give: "(?:give|gives|gave|given|giving)",
     let: "(?:let|lets|letting)",
     pick: "(?:pick|picks|picked|picking)",
+    stick: "(?:stick|sticks|stuck|sticking)",
   };
   if (irregularFamilies[lowered]) {
     return irregularFamilies[lowered];
