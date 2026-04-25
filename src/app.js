@@ -231,7 +231,7 @@ export async function createApp(rootElement) {
                 </button>
               `).join("")}
               ${hiddenTags.length ? `
-                <button type="button" class="tag-shortcut-button ${homeState.showAllTags ? "is-active" : ""}" id="toggle-home-tags">
+                <button type="button" class="tag-shortcut-button tag-shortcut-button-others ${homeState.showAllTags ? "is-active" : ""}" id="toggle-home-tags">
                   Others
                 </button>
               ` : ""}
