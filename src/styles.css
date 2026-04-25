@@ -562,6 +562,7 @@ button {
 }
 
 .preview-value strong,
+.home-example-text strong,
 .study-example strong,
 .definition dd strong {
   font-weight: 800;
